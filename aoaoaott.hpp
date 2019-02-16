@@ -28,7 +28,7 @@
 
 template<typename T, typename = std::enable_if_t<std::is_trivial<T>::value>>
 class AoS {
-    struct Iface : T
+    struct Iface : private T
     {
         T& operator=(const T& rhs) {
             T::operator=(rhs);
@@ -37,6 +37,30 @@ class AoS {
         T& operator=(T&& rhs) {
             T::operator=(std::move(rhs));
             return *this;
+        }
+
+        template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
+        const auto& get() const
+        {
+            return this->*ptr;
+        }
+
+        template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
+        auto& get()
+        {
+            return this->*ptr;
+        }
+
+        template<typename R>
+        R& operator->*(R T::* field)
+        {
+            return this->*field;
+        }
+
+        template<typename R>
+        const R& operator->*(R T::* field) const
+        {
+            return this->*field;
         }
     };
     std::vector<Iface> storage;
@@ -47,18 +71,6 @@ public:
 
     Iface& operator[](std::size_t index) { return storage[index]; }
     const Iface& operator[](std::size_t index) const { return storage[index]; }
-
-    template<typename R>
-    friend R& operator->*(Iface& iface, R T::* field)
-    {
-        return iface.*field;
-    }
-
-    template<typename R>
-    friend const R& operator->*(const Iface& iface, R T::* field)
-    {
-        return iface.*field;
-    }
 };
 
 template<typename T, typename = std::enable_if_t<std::is_trivial<T>::value>>
@@ -78,10 +90,19 @@ class SoA {
         }
     protected:
         BaseIface(std::size_t index, std::size_t size) : index(index), size(size) { }
+        template<typename Class, typename Type> static Type get_pointer_type(Type Class::*);
+
         template<typename R>
         std::size_t get_offset(R T::* member) const
         {
             return member_offset(member) * size + index * sizeof(R);
+        }
+        
+        template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
+        std::size_t get_offset_template() const
+        {
+            using Type = decltype(this->get_pointer_type(ptr));
+            return member_offset(ptr) * size + index * sizeof(Type);
         }
     };
 
@@ -91,8 +112,15 @@ class SoA {
     public:
         Iface( SoA<T>* b, std::size_t index, std::size_t size) : BaseIface(index, size), base(b) { }
 
+        template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
+        auto& get()
+        {
+            using Type = decltype(this->get_pointer_type(ptr));
+            return *reinterpret_cast<Type*>(base->storage.data() + this->template get_offset_template<ptr>());
+        }
+
         template<typename R>
-        R& get_ref(R T::* field) const
+        R& operator->*(R T::* field)
         {
             return *reinterpret_cast<R*>(base->storage.data() + this->get_offset(field));
         }
@@ -103,8 +131,16 @@ class SoA {
         const SoA<T>* base;
     public:
         ConstIface( const SoA<T>* b, std::size_t index, std::size_t size) : BaseIface(index, size), base(b) { }
+
+        template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
+        const auto& get() const
+        {
+            using Type = decltype(this->get_pointer_type(ptr));
+            return *reinterpret_cast<const Type*>(base->storage.data() + this->template get_offset_template<ptr>());
+        }
+
         template<typename R>
-        const R& get_ref(R T::* field) const
+        const R& operator->*(R T::* field) const
         {
             return *reinterpret_cast<const R*>(base->storage.data() + this->get_offset(field));
         }
@@ -118,18 +154,6 @@ public:
 
     Iface operator[](std::size_t index) { return Iface{ this, index, size}; }
     ConstIface operator[](std::size_t index) const { return ConstIface{ this, index, size}; }
-
-    template<typename R>
-    friend R& operator->*(const Iface& iface, R T::* field)
-    {
-        return iface.get_ref( field);
-    }
-
-    template<typename R>
-    friend const R& operator->*(const ConstIface& iface, R T::* field)
-    {
-        return iface.get_ref( field);
-    }
 };
 
 #endif

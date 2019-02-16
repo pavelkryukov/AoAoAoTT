@@ -36,55 +36,69 @@ struct WithArray {
     char array[1024];
 };
 
-
 TEST_CASE("AoS: initialize and r/w")
 {
-    AoS<A> aos( 10);
-    aos[3]->*(&A::key) = 10;
-    aos[3]->*(&A::val) = 3;
-    aos[4]->*(&A::key) = 9;
-    aos[4]->*(&A::val) = 6;
+    AoS<A> storage( 10);
+    storage[3]->*(&A::key) = 10;
+    storage[3]->*(&A::val) = 3;
+    storage[4]->*(&A::key) = 9;
+    storage[4]->*(&A::val) = 6;
     
-    CHECK( aos[3]->*(&A::key) == 10 );
-    CHECK( aos[3]->*(&A::val) == 3 );
-    CHECK( aos[4]->*(&A::key) == 9 );
-    CHECK( aos[4]->*(&A::val) == 6 );
+    CHECK( storage[3]->*(&A::key) == 10 );
+    CHECK( storage[3]->*(&A::val) == 3 );
+    CHECK( storage[4]->*(&A::key) == 9 );
+    CHECK( storage[4]->*(&A::val) == 6 );
 }
 
 TEST_CASE("SoA: initialize and r/w")
 {
-    SoA<A> soa( 10);
-    soa[3]->*(&A::key) = 10;
-    soa[3]->*(&A::val) = 3;
-    soa[4]->*(&A::key) = 9;
-    soa[4]->*(&A::val) = 6;
+    SoA<A> storage( 10);
+    storage[3]->*(&A::key) = 10;
+    storage[3]->*(&A::val) = 3;
+    storage[4]->*(&A::key) = 9;
+    storage[4]->*(&A::val) = 6;
     
-    CHECK( soa[3]->*(&A::key) == 10 );
-    CHECK( soa[3]->*(&A::val) == 3 );
-    CHECK( soa[4]->*(&A::key) == 9 );
-    CHECK( soa[4]->*(&A::val) == 6 );
+    CHECK( storage[3]->*(&A::key) == 10 );
+    CHECK( storage[3]->*(&A::val) == 3 );
+    CHECK( storage[4]->*(&A::key) == 9 );
+    CHECK( storage[4]->*(&A::val) == 6 );
 }
 
 TEST_CASE("AoS: structure with array")
 {
-    AoS<WithArray> aos(10);
-    std::memset(&(aos[3]->*(&WithArray::array)), 0x11, 1024);
-    CHECK( (aos[3]->*(&WithArray::array))[300] == 0x11);
+    AoS<WithArray> storage(10);
+    std::memset(&(storage[3]->*(&WithArray::array)), 0x11, 1024);
+    CHECK( (storage[3]->*(&WithArray::array))[300] == 0x11);
 }
+
+TEST_CASE("AoS: get() interface")
+{
+    AoS<A> storage(10);
+    storage[2].get<&A::val>() = 234;
+    CHECK( storage[2].get<&A::val>() == 234 );
+}
+
+TEST_CASE("SoA: get() interface")
+{
+    SoA<A> storage(10);
+    storage[2].get<&A::val>() = 234;
+    CHECK( storage[2].get<&A::val>() == 234 );
+}
+
 
 TEST_CASE("SoA: structure with array")
 {
-    SoA<WithArray> soa(10);
-    std::memset(&(soa[3]->*(&WithArray::array)), 0x11, 1024);
-    CHECK( (soa[3]->*(&WithArray::array))[300] == 0x11);
+    SoA<WithArray> storage(10);
+    std::memset(&(storage[3]->*(&WithArray::array)), 0x11, 1024);
+    CHECK( (storage[3]->*(&WithArray::array))[300] == 0x11);
 }
 
 TEST_CASE("AoS: assign structure")
 {
-    AoS<A> aos( 10);
-    aos[3] = A{10, 3, 8};
+    AoS<A> storage( 10);
+    storage[3] = A{10, 3, 8};
 
-    CHECK( aos[3]->*(&A::val) == 10 );
-    CHECK( aos[3]->*(&A::key) == 3 );
-    CHECK( aos[3]->*(&A::dum) == 8 );
+    CHECK( storage[3]->*(&A::val) == 10 );
+    CHECK( storage[3]->*(&A::key) == 3 );
+    CHECK( storage[3]->*(&A::dum) == 8 );
 }
