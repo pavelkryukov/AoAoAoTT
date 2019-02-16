@@ -1,4 +1,4 @@
-#include "aoaoaott.hpp"
+#include "../aoaoaott.hpp"
 #include "catch.hpp"
 
 struct A {
