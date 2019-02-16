@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-template<typename T, typename = std::is_trivial<T>>
+template<typename T, typename = std::enable_if_t<std::is_trivial<T>::value>>
 class AoS {
     struct Iface : T {};
     std::vector<Iface> storage;
@@ -29,7 +29,7 @@ public:
     }
 };
 
-template<typename T, typename = std::is_trivial<T>>
+template<typename T, typename = std::enable_if_t<std::is_trivial<T>::value>>
 class SoA {
     std::vector<char> storage;
     std::size_t size;
