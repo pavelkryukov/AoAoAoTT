@@ -23,11 +23,19 @@
 #include "../aoaoaott.hpp"
 #include "catch.hpp"
 
+#include <cstring>
+
 struct A {
     int val;
     int key;
     int dum; 
 };
+
+struct WithArray {
+    int size;
+    char array[1024];
+};
+
 
 TEST_CASE("AoS: initialize and r/w")
 {
@@ -55,6 +63,20 @@ TEST_CASE("SoA: initialize and r/w")
     CHECK( soa[3]->*(&A::val) == 3 );
     CHECK( soa[4]->*(&A::key) == 9 );
     CHECK( soa[4]->*(&A::val) == 6 );
+}
+
+TEST_CASE("AoS: structure with array")
+{
+    AoS<WithArray> aos(10);
+    std::memset(&(aos[3]->*(&WithArray::array)), 0x11, 1024);
+    CHECK( (aos[3]->*(&WithArray::array))[300] == 0x11);
+}
+
+TEST_CASE("SoA: structure with array")
+{
+    SoA<WithArray> soa(10);
+    std::memset(&(soa[3]->*(&WithArray::array)), 0x11, 1024);
+    CHECK( (soa[3]->*(&WithArray::array))[300] == 0x11);
 }
 
 TEST_CASE("AoS: assign structure")
