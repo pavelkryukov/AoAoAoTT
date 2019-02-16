@@ -6,7 +6,17 @@
 
 template<typename T, typename = std::enable_if_t<std::is_trivial<T>::value>>
 class AoS {
-    struct Iface : T {};
+    struct Iface : T
+    {
+        T& operator=(const T& rhs) {
+            T::operator=(rhs);
+            return *this;
+        }
+        T& operator=(T&& rhs) {
+            T::operator=(std::move(rhs));
+            return *this;
+        }
+    };
     std::vector<Iface> storage;
 public:
     AoS() { }

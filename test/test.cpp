@@ -34,3 +34,13 @@ TEST_CASE("SoA: initialize and r/w")
     CHECK( soa[4]->*(&A::key) == 9 );
     CHECK( soa[4]->*(&A::val) == 6 );
 }
+
+TEST_CASE("AoS: assign structure")
+{
+    AoS<A> aos( 10);
+    aos[3] = A{10, 3, 8};
+
+    CHECK( aos[3]->*(&A::val) == 10 );
+    CHECK( aos[3]->*(&A::key) == 3 );
+    CHECK( aos[3]->*(&A::dum) == 8 );
+}
