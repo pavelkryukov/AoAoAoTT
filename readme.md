@@ -6,9 +6,9 @@ AoAoAoTT is a framework to easily switch between AoS and SoA data structures.
 
 ## Basic principles
 
-1. Input structures should not be changed.
-2. Interfaces for AoS and SoA collections must match perfectly.
-3. AoS and SoA collections provide STL interfaces (iterators, begin/end, ranges etc.)
+1. Input structures should not be specially prepared.
+2. Interfaces for AoS and SoA containers must match perfectly.
+3. AoS and SoA containers provide STL interfaces (iterators, begin/end, ranges etc.)
 
 ## Example
 
@@ -48,4 +48,32 @@ int find_in_soa(const char* data)
             return i;
     return -1;
 }
+```
+
+## Known limitations
+
+### Only [trivially copyable](https://en.cppreference.com/w/cpp/named_req/TriviallyCopyable) types are supported
+
+That has a reason: how would you _adjust_ copy methods, move methods, or destructors if the fields are distributed all around the memory?
+
+### C-style arrays are not supported in assignment
+
+You cannot assign a structure with C-style array to SoA container:
+
+```c++
+   struct Example {
+       char array[128];
+   };
+   SoA<Example> storage(1);
+   storage[0] = Example(); // Does not work;
+```
+
+However, you can use `std::array` without problems:
+
+```c++
+   struct Example {
+       std::array<char, 128> array;
+   };
+   SoA<Example> storage(1);
+   storage[0] = Example(); // Correct
 ```

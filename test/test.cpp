@@ -25,31 +25,26 @@
 
 #include <cstring>
 
+using namespace ao_ao_ao_tt;
+
+struct EmptyStruct {};
+
+TEST_CASE("Empty structures")
+{
+    AoS<EmptyStruct>();
+    SoA<EmptyStruct>();
+}
+
 struct A {
     int val;
     int key;
     int dum;
 };
 
-struct EmptyStruct {};
-
 namespace ao_ao_ao_tt::loophole_ns
 {
     static_assert(std::is_same_v<as_type_list<A>, type_list<int, int, int>>);
     static_assert(std::is_same_v<as_type_list<EmptyStruct>, type_list<>>);
-}
-
-struct WithArray {
-    int size;
-    char array[1024];
-};
-
-using namespace ao_ao_ao_tt;
-
-TEST_CASE("Empty structures")
-{
-    AoS<EmptyStruct>();
-    SoA<EmptyStruct>();
 }
 
 TEST_CASE("AoS: initialize and r/w")
@@ -80,13 +75,6 @@ TEST_CASE("SoA: initialize and r/w")
     CHECK( storage[4]->*(&A::val) == 6 );
 }
 
-TEST_CASE("AoS: structure with array")
-{
-    AoS<WithArray> storage(10);
-    std::memset(&(storage[3]->*(&WithArray::array)), 0x11, 1024);
-    CHECK( (storage[3]->*(&WithArray::array))[300] == 0x11);
-}
-
 TEST_CASE("AoS: get() interface")
 {
     AoS<A> storage(10);
@@ -99,13 +87,6 @@ TEST_CASE("SoA: get() interface")
     SoA<A> storage(10);
     storage[2].get<&A::val>() = 234;
     CHECK( storage[2].get<&A::val>() == 234 );
-}
-
-TEST_CASE("SoA: structure with array")
-{
-    SoA<WithArray> storage(10);
-    std::memset(&(storage[3]->*(&WithArray::array)), 0x11, 1024);
-    CHECK( (storage[3]->*(&WithArray::array))[300] == 0x11);
 }
 
 TEST_CASE("AoS: assign structure")
@@ -160,6 +141,45 @@ TEST_CASE("SoA: constant functions")
     CHECK( const_ref[3]->*(&A::key) == 10 );
     CHECK( const_ref[3]->*(&A::val) == 3 );
     CHECK( const_ref[3].get<&A::val>() == 3 );
+}
+
+struct WithArray {
+    int size;
+    std::array<char, 16> array;
+};
+
+static_assert(sizeof(WithArray) == sizeof(int) + 16);
+
+TEST_CASE("AoS: structure with array")
+{
+    AoS<WithArray> storage(10);
+    std::memset(&(storage[3]->*(&WithArray::array)), 0x11, 16);
+    CHECK( (storage[3]->*(&WithArray::array))[8] == 0x11);
+}
+
+TEST_CASE("SoA: structure with array")
+{
+    SoA<WithArray> storage(10);
+    std::memset(&(storage[3]->*(&WithArray::array)), 0x11, 16);
+    CHECK( (storage[3]->*(&WithArray::array))[8] == 0x11);
+}
+
+TEST_CASE("AoS: assign array")
+{
+    AoS<WithArray> storage( 10);
+    WithArray hw{ 16, "Hello World!!!!"};
+    storage[6] = hw;
+
+    CHECK( std::strcmp((storage[6]->*(&WithArray::array)).data(), "Hello World!!!!") == 0 );
+}
+
+TEST_CASE("SoA: assign array")
+{
+    SoA<WithArray> storage( 10);
+    WithArray hw{ 16, "Hello World!!!!"};
+    storage[6] = hw;
+
+    CHECK( std::strcmp((storage[6]->*(&WithArray::array)).data(), "Hello World!!!!") == 0 );
 }
 
 struct DefaultInitializer
@@ -270,3 +290,5 @@ TEST_CASE("SoA: allow substructure")
     CHECK( (storage[5]->*(&WithA::a)).dum == 11 );
     CHECK( storage[5]->*(&WithA::dum) == 12 );
 }
+
+
