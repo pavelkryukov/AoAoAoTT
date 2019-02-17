@@ -26,6 +26,8 @@
 #include <memory>
 #include <vector>
 
+namespace ao_ao_ao_tt {
+
 namespace struct_reader {
     // Based on public domain code authored by Alexandr Poltavsky
     // https://github.com/alexpolt/luple
@@ -116,7 +118,7 @@ namespace struct_reader {
     //and here is our hot and fresh out of kitchen type list (alias template)
     template<typename T>
     using as_type_list = decltype(get_type_list< T >(std::make_integer_sequence< int, fields_number<T>(0) >{}));
-}
+} // namespace struct_reader
 
 namespace tlist_helpers
 {
@@ -164,7 +166,7 @@ namespace tlist_helpers
         using TL = as_type_list<T>;
         copy_n_members<T, TL::size>()(src, dst, index, size);
     }
-}
+} // namespace tlist_helpers
 
 template<typename T>
 class AoS {
@@ -358,5 +360,7 @@ public:
     Iface operator[](std::size_t index) noexcept { return Iface{ this, index, size}; }
     ConstIface operator[](std::size_t index) const noexcept { return ConstIface{ this, index, size}; }
 };
+
+} // namespace ao_ao_ao_tt
 
 #endif

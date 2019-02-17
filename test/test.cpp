@@ -31,11 +31,13 @@ struct A {
     int dum;
 };
 
-static_assert(std::is_same_v<struct_reader::as_type_list<A>, struct_reader::type_list<int, int, int>>);
-
 struct EmptyStruct {};
 
-static_assert(std::is_same_v<struct_reader::as_type_list<EmptyStruct>, struct_reader::type_list<>>);
+namespace struct_reader
+{
+    static_assert(std::is_same_v<as_type_list<A>, type_list<int, int, int>>);
+    static_assert(std::is_same_v<as_type_list<EmptyStruct>, type_list<>>);
+}
 
 struct WithArray {
     int size;
@@ -48,6 +50,8 @@ struct BwithA {
     int key;
     int dum;
 };
+
+using namespace ao_ao_ao_tt;
 
 TEST_CASE("Empty structures")
 {
