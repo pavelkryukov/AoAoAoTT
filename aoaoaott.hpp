@@ -141,28 +141,30 @@ namespace tlist_helpers
     constexpr std::size_t nth_member_offset<TL, 0> = 0;
 
     template<typename T, size_t N>
-    void copy_nth_member(const T& src, char* dst, size_t index, size_t size)
-        noexcept(noexcept(std::is_nothrow_copy_assignable_v<tlist_get_t<as_type_list<T>, N>>))
+    class copy_n_members_to_storage
     {
         using TL = as_type_list<T>;
-        using R = tlist_get_t<TL, N>;
-        *reinterpret_cast<R*>(dst + nth_member_offset<TL, N> * size + index * sizeof(R)) =
-            *reinterpret_cast<const R*>(reinterpret_cast<const char*>(&src) + nth_member_offset<TL, N>);
-    }
+        using R = tlist_get_t<TL, N - 1>;
+        static constexpr const size_t offset = nth_member_offset<TL, N - 1>;
+        static constexpr const size_t sizeofR = sizeof(R);
 
-    template<typename T, size_t N>
-    struct copy_n_members
-    {
-        void operator()(const T& src, char* dst, size_t index, size_t size) const
-            noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
+        void copy_member(const T& src, char* dst, size_t index, size_t size)
+            const noexcept(noexcept(std::is_nothrow_copy_assignable_v<R>))
         {
-            copy_nth_member<T, N - 1>(src, dst, index, size);
-            copy_n_members<T, N - 1>()(src, dst, index, size);
+            *reinterpret_cast<R*>(dst + offset * size + index * sizeofR) =
+                *reinterpret_cast<const R*>(reinterpret_cast<const char*>(&src) + offset);
+        }
+    public:
+        void operator()(const T& src, char* dst, size_t index, size_t size)
+            const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
+        {
+            copy_member(src, dst, index, size);
+            copy_n_members_to_storage<T, N - 1>()(src, dst, index, size);
         }
     };
 
     template<typename T>
-    struct copy_n_members<T, 0>
+    struct copy_n_members_to_storage<T, 0>
     {
         void operator()(const T&, char*, size_t, size_t) const
             noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
@@ -170,11 +172,50 @@ namespace tlist_helpers
     };
 
     template<typename T>
-    void copy_all_members(const T& src, char* dst, size_t index, size_t size)
+    void copy_all_members_to_storage(const T& src, char* dst, size_t index, size_t size)
         noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
         using TL = as_type_list<T>;
-        copy_n_members<T, TL::size>()(src, dst, index, size);
+        copy_n_members_to_storage<T, TL::size>()(src, dst, index, size);
+    }
+
+    template<typename T, size_t N>
+    class copy_n_members_from_storage
+    {
+        using TL = as_type_list<T>;
+        using R = tlist_get_t<TL, N - 1>;
+        static constexpr const size_t offset = nth_member_offset<TL, N - 1>;
+        static constexpr const size_t sizeofR = sizeof(R);
+
+        void copy_member(const char* src, T* dst, size_t index, size_t size)
+            const noexcept(noexcept(std::is_nothrow_copy_assignable_v<R>))
+        {
+            *reinterpret_cast<R*>(reinterpret_cast<char*>(dst) + offset) =
+                *reinterpret_cast<const R*>(src + offset * size + index * sizeofR);
+        }
+    public:
+        void operator()(const char* src, T* dst, size_t index, size_t size)
+            const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
+        {
+            copy_member(src, dst, index, size);
+            copy_n_members_from_storage<T, N - 1>()(src, dst, index, size);
+        }
+    };
+
+    template<typename T>
+    struct copy_n_members_from_storage<T, 0>
+    {
+        void operator()(const char*, T*, size_t, size_t) const
+            noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
+        { }
+    };
+
+    template<typename T>
+    void copy_all_members_from_storage(const char* src, T* dst, size_t index, size_t size)
+        noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
+    {
+        using TL = as_type_list<T>;
+        copy_n_members_from_storage<T, TL::size>()(src, dst, index, size);
     }
 } // namespace tlist_helpers
 
@@ -222,6 +263,8 @@ class AoS {
         {
             return this->*field;
         }
+
+        T aggregate_object() const noexcept { return *this; }
     };
     std::vector<Iface> storage;
 public:
@@ -244,8 +287,8 @@ class SoA {
     std::size_t size;
     class BaseIface {
     private:
+        const SoA<T>* base;
         size_t index;
-        size_t size;
         template<typename R>
         static constexpr auto member_offset(R T::* member) noexcept
         {
@@ -254,55 +297,82 @@ class SoA {
             );
         }
     protected:
-        BaseIface(std::size_t index, std::size_t size) : index(index), size(size) { }
-        constexpr auto get_size()  const noexcept { return size; }
+        constexpr BaseIface(const SoA<T>* base, std::size_t index) : base(base), index(index) { }
+        constexpr auto get_size()  const noexcept { return base->size; }
         constexpr auto get_index() const noexcept { return index; }
-        
+        constexpr const auto* get_base() const noexcept { return base; }
+
         template<typename Class, typename Type> static Type get_pointer_type(Type Class::*);
 
         template<typename R>
         std::size_t get_offset(R T::* member) const noexcept
         {
-            return member_offset(member) * size + index * sizeof(R);
+            return member_offset(member) * get_size() + index * sizeof(R);
         }
 
         template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
         std::size_t get_offset_template() const noexcept
         {
             using Type = decltype(this->get_pointer_type(ptr));
-            return member_offset(ptr) * size + index * sizeof(Type);
+            return member_offset(ptr) * get_size() + index * sizeof(Type);
+        }
+    public:
+        T aggregate_object() const noexcept 
+        {
+            T result{};
+            tlist_helpers::copy_all_members_from_storage(base->storage.data(), &result, this->get_index(), this->get_size());
+            return result;
         }
     };
 
-    class Iface : private BaseIface
+    class ConstIface : public BaseIface
     {
-        SoA<T>* base;
+    public:
+        ConstIface( const SoA<T>* b, std::size_t index) : BaseIface(b, index) { }
+
+        template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
+        const auto& get() const noexcept
+        {
+            using Type = decltype(this->get_pointer_type(ptr));
+            return *reinterpret_cast<const Type*>(this->get_base()->storage.data() + this->template get_offset_template<ptr>());
+        }
+
+        template<typename R>
+        const R& operator->*(R T::* field) const noexcept
+        {
+            return *reinterpret_cast<const R*>(this->get_base()->storage.data() + this->get_offset(field));
+        }
+    };
+
+    class Iface : public BaseIface
+    {
+        SoA<T>* mutable_base;
 
     public:
-        Iface( SoA<T>* b, std::size_t index, std::size_t size) : BaseIface(index, size), base(b) { }
+        Iface( SoA<T>* b, std::size_t index) : BaseIface(b, index), mutable_base(b) { }
 
         template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
         auto& get() const noexcept
         {
             using Type = decltype(this->get_pointer_type(ptr));
-            return *reinterpret_cast<Type*>(base->storage.data() + this->template get_offset_template<ptr>());
+            return *reinterpret_cast<Type*>(mutable_base->storage.data() + this->template get_offset_template<ptr>());
         }
 
         template<typename R>
         R& operator->*(R T::* field) const noexcept
         {
-            return *reinterpret_cast<R*>(base->storage.data() + this->get_offset(field));
+            return *reinterpret_cast<R*>(mutable_base->storage.data() + this->get_offset(field));
         }
 
         void copy_object(const T& rhs) const noexcept
         {
-            tlist_helpers::copy_all_members(rhs, base->storage.data(), this->get_index(), this->get_size());
+            tlist_helpers::copy_all_members_to_storage(rhs, mutable_base->storage.data(), this->get_index(), this->get_size());
         }
 
         void move_object(T&& rhs) const noexcept
         {            
             // Do not care about move semantics since we support only trivial structures so far
-            tlist_helpers::copy_all_members(rhs, base->storage.data(), this->get_index(), this->get_size());
+            tlist_helpers::copy_all_members_to_storage(rhs, mutable_base->storage.data(), this->get_index(), this->get_size());
         }
 
         void operator=(const T& rhs) const noexcept
@@ -318,25 +388,6 @@ class SoA {
         }
     };
 
-    class ConstIface : private BaseIface
-    {
-        const SoA<T>* base;
-    public:
-        ConstIface( const SoA<T>* b, std::size_t index, std::size_t size) : BaseIface(index, size), base(b) { }
-
-        template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-        const auto& get() const noexcept
-        {
-            using Type = decltype(this->get_pointer_type(ptr));
-            return *reinterpret_cast<const Type*>(base->storage.data() + this->template get_offset_template<ptr>());
-        }
-
-        template<typename R>
-        const R& operator->*(R T::* field) const noexcept
-        {
-            return *reinterpret_cast<const R*>(base->storage.data() + this->get_offset(field));
-        }
-    };
 
     friend class Iface;
     friend class ConstIface;
@@ -364,11 +415,11 @@ public:
         size_t old_size = size;
         resize_memory(s);
         for (size_t i = old_size; i < size; ++i)
-            Iface( this, i, size).copy_object(value);
+            Iface( this, i).copy_object(value);
     }
 
-    Iface operator[](std::size_t index) noexcept { return Iface{ this, index, size}; }
-    ConstIface operator[](std::size_t index) const noexcept { return ConstIface{ this, index, size}; }
+    Iface operator[](std::size_t index) noexcept { return Iface{ this, index}; }
+    ConstIface operator[](std::size_t index) const noexcept { return ConstIface{ this, index}; }
 };
 
 } // namespace ao_ao_ao_tt

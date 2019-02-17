@@ -291,4 +291,38 @@ TEST_CASE("SoA: allow substructure")
     CHECK( storage[5]->*(&WithA::dum) == 12 );
 }
 
+struct HasMethod
+{
+    int alain;
+    int delon;
+    void drink_double_bourbon()
+    {
+        std::swap(alain, delon);
+    }
+};
 
+TEST_CASE("AoS: aggregate and run method")
+{
+    AoS<HasMethod> storage( 10);
+    storage[4] = HasMethod{33, 44};
+    auto val = storage[4].aggregate_object();
+    val.drink_double_bourbon();
+
+    CHECK( val.alain == 44 );
+    CHECK( val.delon == 33 );
+    CHECK( storage[4]->*(&HasMethod::alain) == 33 );
+    CHECK( storage[4]->*(&HasMethod::delon) == 44 );
+}
+
+TEST_CASE("SoA: aggregate and run method")
+{
+    SoA<HasMethod> storage( 10);
+    storage[4] = HasMethod{33, 44};
+    auto val = storage[4].aggregate_object();
+    val.drink_double_bourbon();
+
+    CHECK( val.alain == 44 );
+    CHECK( val.delon == 33 );
+    CHECK( storage[4]->*(&HasMethod::alain) == 33 );
+    CHECK( storage[4]->*(&HasMethod::delon) == 44 );
+}
