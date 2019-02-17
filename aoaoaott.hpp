@@ -234,7 +234,13 @@ public:
 
     Iface& operator[](std::size_t index) noexcept { return storage[index]; }
     const Iface& operator[](std::size_t index) const noexcept { return storage[index]; }
-    
+
+    using iterator = typename std::vector<Iface>::iterator;
+    using const_iterator = typename std::vector<Iface>::const_iterator;
+
+    const_iterator begin() const noexcept { return storage.cbegin(); }
+    const_iterator end() const noexcept { return storage.cend(); }
+
     class Iface : private T
     {
     public:
@@ -337,6 +343,7 @@ public:
         constexpr auto get_size()  const noexcept { return base->size; }
         constexpr auto get_index() const noexcept { return index; }
         constexpr const auto* get_base() const noexcept { return base; }
+        void inc_index() noexcept { ++index; }
 
         template<typename Class, typename Type> static Type get_pointer_type(Type Class::*);
 
@@ -418,6 +425,16 @@ public:
         }
     };
 
+    class const_iterator : private ConstIface
+    {
+    public:
+        const_iterator(const SoA<T>* base, std::size_t index) : ConstIface(base, index) { }
+        bool operator!=(const const_iterator& rhs) { return this->get_index() != rhs.get_index(); }
+        const_iterator& operator++() { this->inc_index(); return *this; }
+        ConstIface& operator*() { return *this; }
+    };
+    const_iterator begin() const noexcept { return const_iterator{ this, 0}; }
+    const_iterator end() const noexcept { return const_iterator{ this, size}; }
 private:
     std::vector<char> storage;
     std::size_t size;

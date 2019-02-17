@@ -209,3 +209,13 @@ TEST_CONTAINER_CASE("aggregate and run method")
     CHECK( storage[4]->*(&HasMethod::alain) == 33 );
     CHECK( storage[4]->*(&HasMethod::delon) == 44 );
 }
+
+TEST_CONTAINER_CASE("const iterator")
+{
+    CONTAINER<A> storage(10, { 11, 12, 13});
+    for (const auto& entry : storage) {
+        CHECK( entry->*(&A::val) == 11);
+        CHECK( entry->*(&A::key) == 12);
+        CHECK( entry->*(&A::dum) == 13);
+    }        
+}
