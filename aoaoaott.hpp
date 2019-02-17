@@ -112,7 +112,12 @@ namespace struct_reader {
     //and here is our hot and fresh out of kitchen type list (alias template)
     template<typename T>
     using as_type_list = decltype(get_type_list< T >(std::make_integer_sequence< int, fields_number<T>(0) >{}));
-    
+}
+
+namespace tlist_helpers
+{
+    using namespace struct_reader;
+
     template<typename TL, size_t N>
     constexpr std::size_t nth_member_offset = sizeof(tlist_get_t<TL, N - 1>) + nth_member_offset<TL, N - 1>;
 
@@ -256,7 +261,7 @@ class SoA {
 
         void operator=(const T& rhs)
         {
-            struct_reader::copy_all_members(rhs, base->storage.data(), this->get_index(), this->get_size());
+            tlist_helpers::copy_all_members(rhs, base->storage.data(), this->get_index(), this->get_size());
         }
     };
 
