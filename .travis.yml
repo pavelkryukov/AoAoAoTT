@@ -4,6 +4,8 @@ notifications:
 language: c++
 sudo: false
 
+dist: xenial
+
 branches:
   only:
   - master
@@ -13,7 +15,7 @@ compiler:
 
 script:
   - cd test
-  - make test
+  - make CXXFLAGS='-fprofile-arcs -ftest-coverage -g' test
 
 after_success:
   - bash <(curl -s https://codecov.io/bash) || echo "Codecov did not collect coverage reports"
