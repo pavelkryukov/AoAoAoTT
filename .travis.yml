@@ -1,0 +1,19 @@
+notifications:
+  email: false
+
+language: c++
+sudo: false
+
+branches:
+  only:
+  - master
+  
+compiler:
+  - clang
+
+script:
+  - cd test
+  - make test
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash) || echo "Codecov did not collect coverage reports"
