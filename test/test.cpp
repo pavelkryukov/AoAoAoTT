@@ -25,14 +25,21 @@
 
 #include <cstring>
 
+#ifndef CONTAINER
+#error "CONTAINER macro must be defined"
+#endif
+
+#define STRINGIZE(s) STRINGIZE_H(s)
+#define STRINGIZE_H(s) #s
+#define CONTAINER_STR STRINGIZE(CONTAINER)
+
 using namespace ao_ao_ao_tt;
 
 struct EmptyStruct {};
 
-TEST_CASE("Empty structures")
+TEST_CASE(CONTAINER_STR "Empty structures")
 {
-    AoS<EmptyStruct>();
-    SoA<EmptyStruct>();
+    CONTAINER<EmptyStruct>();
 }
 
 struct A {
@@ -47,9 +54,9 @@ namespace ao_ao_ao_tt::loophole_ns
     static_assert(std::is_same_v<as_type_list<EmptyStruct>, type_list<>>);
 }
 
-TEST_CASE("AoS: initialize and r/w")
+TEST_CASE(CONTAINER_STR " initialize and r/w")
 {
-    AoS<A> storage( 10);
+    CONTAINER<A> storage( 10);
     storage[3]->*(&A::key) = 10;
     storage[3]->*(&A::val) = 3;
     storage[4]->*(&A::key) = 9;
@@ -61,37 +68,16 @@ TEST_CASE("AoS: initialize and r/w")
     CHECK( storage[4]->*(&A::val) == 6 );
 }
 
-TEST_CASE("SoA: initialize and r/w")
+TEST_CASE(CONTAINER_STR " get() interface")
 {
-    SoA<A> storage( 10);
-    storage[3]->*(&A::key) = 10;
-    storage[3]->*(&A::val) = 3;
-    storage[4]->*(&A::key) = 9;
-    storage[4]->*(&A::val) = 6;
- 
-    CHECK( storage[3]->*(&A::key) == 10 );
-    CHECK( storage[3]->*(&A::val) == 3 );
-    CHECK( storage[4]->*(&A::key) == 9 );
-    CHECK( storage[4]->*(&A::val) == 6 );
-}
-
-TEST_CASE("AoS: get() interface")
-{
-    AoS<A> storage(10);
+    CONTAINER<A> storage(10);
     storage[2].get<&A::val>() = 234;
     CHECK( storage[2].get<&A::val>() == 234 );
 }
 
-TEST_CASE("SoA: get() interface")
+TEST_CASE(CONTAINER_STR " assign structure")
 {
-    SoA<A> storage(10);
-    storage[2].get<&A::val>() = 234;
-    CHECK( storage[2].get<&A::val>() == 234 );
-}
-
-TEST_CASE("AoS: assign structure")
-{
-    AoS<A> storage( 10);
+    CONTAINER<A> storage( 10);
     const A x{3, 7, 11};
     storage[2] = x; // copy assignment
     storage[3] = A{10, 3, 8}; // move assignment
@@ -104,36 +90,9 @@ TEST_CASE("AoS: assign structure")
     CHECK( storage[3]->*(&A::dum) == 8 );
 }
 
-TEST_CASE("SoA: assign structure")
+TEST_CASE(CONTAINER_STR " constant functions")
 {
-    SoA<A> storage( 10);
-    const A x{3, 7, 11};
-    storage[2] = x; // copy assignment
-    storage[3] = A{10, 3, 8}; // move assignment
-
-    CHECK( storage[2]->*(&A::val) == 3 );
-    CHECK( storage[2]->*(&A::key) == 7 );
-    CHECK( storage[2]->*(&A::dum) == 11 );
-    CHECK( storage[3]->*(&A::val) == 10 );
-    CHECK( storage[3]->*(&A::key) == 3 );
-    CHECK( storage[3]->*(&A::dum) == 8 );
-}
-
-TEST_CASE("AoS: constant functions")
-{
-    AoS<A> storage( 10);
-    storage[3]->*(&A::key) = 10;
-    storage[3]->*(&A::val) = 3;
-
-    const auto& const_ref = storage;
-    CHECK( const_ref[3]->*(&A::key) == 10 );
-    CHECK( const_ref[3]->*(&A::val) == 3 );
-    CHECK( const_ref[3].get<&A::val>() == 3 );
-}
-
-TEST_CASE("SoA: constant functions")
-{
-    SoA<A> storage( 10);
+    CONTAINER<A> storage( 10);
     storage[3]->*(&A::key) = 10;
     storage[3]->*(&A::val) = 3;
 
@@ -150,32 +109,16 @@ struct WithArray {
 
 static_assert(sizeof(WithArray) == sizeof(int) + 16);
 
-TEST_CASE("AoS: structure with array")
+TEST_CASE(CONTAINER_STR " structure with array")
 {
-    AoS<WithArray> storage(10);
+    CONTAINER<WithArray> storage(10);
     std::memset(&(storage[3]->*(&WithArray::array)), 0x11, 16);
     CHECK( (storage[3]->*(&WithArray::array))[8] == 0x11);
 }
 
-TEST_CASE("SoA: structure with array")
+TEST_CASE(CONTAINER_STR " assign array")
 {
-    SoA<WithArray> storage(10);
-    std::memset(&(storage[3]->*(&WithArray::array)), 0x11, 16);
-    CHECK( (storage[3]->*(&WithArray::array))[8] == 0x11);
-}
-
-TEST_CASE("AoS: assign array")
-{
-    AoS<WithArray> storage( 10);
-    WithArray hw{ 16, "Hello World!!!!"};
-    storage[6] = hw;
-
-    CHECK( std::strcmp((storage[6]->*(&WithArray::array)).data(), "Hello World!!!!") == 0 );
-}
-
-TEST_CASE("SoA: assign array")
-{
-    SoA<WithArray> storage( 10);
+    CONTAINER<WithArray> storage( 10);
     WithArray hw{ 16, "Hello World!!!!"};
     storage[6] = hw;
 
@@ -190,51 +133,26 @@ struct DefaultInitializer
 
 static_assert(!std::is_trivially_constructible_v<DefaultInitializer>);
 
-TEST_CASE("AoS: default initialization")
+TEST_CASE(CONTAINER_STR " default initialization")
 {
-    AoS<DefaultInitializer> storage( 10);
+    CONTAINER<DefaultInitializer> storage( 10);
     CHECK( storage[2]->*(&DefaultInitializer::x) == 9 );
     CHECK( storage[3]->*(&DefaultInitializer::x) == 9 );
 }
 
-TEST_CASE("SoA: default initialization")
-{
-    SoA<DefaultInitializer> storage( 10);
-    CHECK( storage[2]->*(&DefaultInitializer::x) == 9 );
-    CHECK( storage[3]->*(&DefaultInitializer::x) == 9 );
-}
-
-TEST_CASE("AoS: initialization via copies")
+TEST_CASE(CONTAINER_STR " initialization via copies")
 {
     DefaultInitializer example{ 234, 123};
-    AoS<DefaultInitializer> storage( 10, example);
+    CONTAINER<DefaultInitializer> storage( 10, example);
     CHECK( storage[2]->*(&DefaultInitializer::x) == 234 );
     CHECK( storage[2]->*(&DefaultInitializer::y) == 123 );
     CHECK( storage[3]->*(&DefaultInitializer::x) == 234 );
 }
 
-TEST_CASE("SoA: initialization via copies")
+TEST_CASE(CONTAINER_STR " resize by example")
 {
     DefaultInitializer example{ 234, 123};
-    SoA<DefaultInitializer> storage( 10, example);
-    CHECK( storage[2]->*(&DefaultInitializer::x) == 234 );
-    CHECK( storage[2]->*(&DefaultInitializer::y) == 123 );
-    CHECK( storage[3]->*(&DefaultInitializer::x) == 234 );
-}
-
-TEST_CASE("AoS: resize by example")
-{
-    DefaultInitializer example{ 234, 123};
-    AoS<DefaultInitializer> storage( 10);
-    storage.resize(20, example);
-    CHECK( storage[5]->*(&DefaultInitializer::x) == 9 );
-    CHECK( storage[15]->*(&DefaultInitializer::x) == 234 );
-}
-
-TEST_CASE("SoA: resize by example")
-{
-    DefaultInitializer example{ 234, 123};
-    SoA<DefaultInitializer> storage( 10);
+    CONTAINER<DefaultInitializer> storage( 10);
     storage.resize(20, example);
     CHECK( storage[5]->*(&DefaultInitializer::x) == 9 );
     CHECK( storage[15]->*(&DefaultInitializer::x) == 234 );
@@ -246,17 +164,9 @@ struct ConstantMember
     int y = 0;
 };
 
-TEST_CASE("AoS: structure with constant member")
+TEST_CASE(CONTAINER_STR " structure with constant member")
 {
-    AoS<ConstantMember> storage( 10);
-    storage.resize(20);
-    CHECK( storage[5]->*(&ConstantMember::x) == 9 );
-    CHECK( storage[15]->*(&ConstantMember::x) == 9 );
-}
-
-TEST_CASE("SoA: structure with constant member")
-{
-    SoA<ConstantMember> storage( 10);
+    CONTAINER<ConstantMember> storage( 10);
     storage.resize(20);
     CHECK( storage[5]->*(&ConstantMember::x) == 9 );
     CHECK( storage[15]->*(&ConstantMember::x) == 9 );
@@ -269,20 +179,9 @@ struct WithA {
     int dum;
 };
 
-TEST_CASE("AoS: allow substructure")
+TEST_CASE(CONTAINER_STR " allow substructure")
 {
-    AoS<WithA> storage( 10);
-    const A x{3, 7, 11};
-    const WithA y{x, 4, 8, 12};
-    storage[5] = y;
-
-    CHECK( (storage[5]->*(&WithA::a)).dum == 11 );
-    CHECK( storage[5]->*(&WithA::dum) == 12 );
-}
-
-TEST_CASE("SoA: allow substructure")
-{
-    SoA<WithA> storage( 10);
+    CONTAINER<WithA> storage( 10);
     const A x{3, 7, 11};
     const WithA y{x, 4, 8, 12};
     storage[5] = y;
@@ -301,9 +200,9 @@ struct HasMethod
     }
 };
 
-TEST_CASE("AoS: aggregate and run method")
+TEST_CASE(CONTAINER_STR " aggregate and run method")
 {
-    AoS<HasMethod> storage( 10);
+    CONTAINER<HasMethod> storage( 10);
     storage[4] = HasMethod{33, 44};
     auto val = storage[4].aggregate_object();
     val.drink_double_bourbon();
@@ -314,15 +213,7 @@ TEST_CASE("AoS: aggregate and run method")
     CHECK( storage[4]->*(&HasMethod::delon) == 44 );
 }
 
-TEST_CASE("SoA: aggregate and run method")
+TEST_CASE(CONTAINER_STR " iterator")
 {
-    SoA<HasMethod> storage( 10);
-    storage[4] = HasMethod{33, 44};
-    auto val = storage[4].aggregate_object();
-    val.drink_double_bourbon();
-
-    CHECK( val.alain == 44 );
-    CHECK( val.delon == 33 );
-    CHECK( storage[4]->*(&HasMethod::alain) == 33 );
-    CHECK( storage[4]->*(&HasMethod::delon) == 44 );
+    
 }

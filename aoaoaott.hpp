@@ -234,7 +234,7 @@ public:
 
     Iface& operator[](std::size_t index) noexcept { return storage[index]; }
     const Iface& operator[](std::size_t index) const noexcept { return storage[index]; }
-
+    
     class Iface : private T
     {
     public:
