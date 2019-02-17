@@ -171,6 +171,10 @@ class AoS {
     static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
     struct Iface : private T
     {
+        Iface() : T() { }
+        explicit Iface(const T& value) : T(value) { }
+        explicit Iface(T&& value) : T(std::move(value)) { }
+        
         T& operator=(const T& rhs) noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
         {
             T::operator=(rhs);
@@ -210,8 +214,11 @@ class AoS {
     std::vector<Iface> storage;
 public:
     AoS() { }
-    AoS(std::size_t size) : storage(size) { }
+    explicit AoS(std::size_t size) : storage(size) { }
+    AoS(std::size_t size, const T& value) : storage(size, Iface(value)) { }
+
     void resize(std::size_t size) { storage.resize( size); }
+    void resize(std::size_t size, const T& value) { storage.resize( size, Iface(value)); }
 
     Iface& operator[](std::size_t index) noexcept { return storage[index]; }
     const Iface& operator[](std::size_t index) const noexcept { return storage[index]; }
@@ -309,19 +316,31 @@ class SoA {
 
     friend class Iface;
     friend class ConstIface;
+
+    void resize_memory( std::size_t s)
+    {
+        storage.resize(s * sizeof(T));
+        size = s;        
+    }
 public:
     SoA() = default;
-    SoA(std::size_t s) : size(0) { resize(s); }
+    explicit SoA(std::size_t s) : size(0) { resize(s); }
+    SoA(std::size_t s, const T& value) : size(0) { resize(s, value); }
+
     void resize(std::size_t s)
     {
-        size_t old_size = size;
-        storage.resize(s * sizeof(T));
-        size = s;
-        if constexpr (!std::is_trivially_constructible_v<T>)
-            for (size_t i = old_size; i < size; ++i)
-                Iface( this, i, size) = T();
+        if constexpr(std::is_trivially_constructible_v<T>)
+            resize_memory(s);
         else
-            (void)old_size;
+            resize(s, T());
+    }
+
+    void resize(std::size_t s, const T& value)
+    {
+        size_t old_size = size;
+        resize_memory(s);
+        for (size_t i = old_size; i < size; ++i)
+            Iface( this, i, size) = value;
     }
 
     Iface operator[](std::size_t index) noexcept { return Iface{ this, index, size}; }

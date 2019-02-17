@@ -186,3 +186,39 @@ TEST_CASE("SoA: default initialization")
     CHECK( storage[2]->*(&DefaultInitializer::x) == 9 );
     CHECK( storage[3]->*(&DefaultInitializer::x) == 9 );
 }
+
+TEST_CASE("AoS: initialization via copies")
+{
+    DefaultInitializer example{ 234, 123};
+    AoS<DefaultInitializer> storage( 10, example);
+    CHECK( storage[2]->*(&DefaultInitializer::x) == 234 );
+    CHECK( storage[2]->*(&DefaultInitializer::y) == 123 );
+    CHECK( storage[3]->*(&DefaultInitializer::x) == 234 );
+}
+
+TEST_CASE("SoA: initialization via copies")
+{
+    DefaultInitializer example{ 234, 123};
+    SoA<DefaultInitializer> storage( 10, example);
+    CHECK( storage[2]->*(&DefaultInitializer::x) == 234 );
+    CHECK( storage[2]->*(&DefaultInitializer::y) == 123 );
+    CHECK( storage[3]->*(&DefaultInitializer::x) == 234 );
+}
+
+TEST_CASE("AoS: resize by example")
+{
+    DefaultInitializer example{ 234, 123};
+    AoS<DefaultInitializer> storage( 10);
+    storage.resize(20, example);
+    CHECK( storage[5]->*(&DefaultInitializer::x) == 9 );
+    CHECK( storage[15]->*(&DefaultInitializer::x) == 234 );
+}
+
+TEST_CASE("SoA: resize by example")
+{
+    DefaultInitializer example{ 234, 123};
+    SoA<DefaultInitializer> storage( 10);
+    storage.resize(20, example);
+    CHECK( storage[5]->*(&DefaultInitializer::x) == 9 );
+    CHECK( storage[15]->*(&DefaultInitializer::x) == 234 );
+}
