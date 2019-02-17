@@ -460,7 +460,7 @@ public:
     const_iterator cend() const noexcept { return const_iterator{ this, size}; }
     const_iterator begin() const noexcept { return cbegin(); }
     const_iterator end() const noexcept { return cend(); }
-    iterator begin() noexcept { return iterator{ this, size}; }
+    iterator begin() noexcept { return iterator{ this, 0}; }
     iterator end() noexcept { return iterator{ this, size}; }
 private:
     std::vector<char> storage;
