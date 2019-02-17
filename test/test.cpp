@@ -217,5 +217,21 @@ TEST_CONTAINER_CASE("const iterator")
         CHECK( entry->*(&A::val) == 11);
         CHECK( entry->*(&A::key) == 12);
         CHECK( entry->*(&A::dum) == 13);
-    }        
+    }
 }
+
+TEST_CONTAINER_CASE("mutable iterator")
+{
+    CONTAINER<A> storage(10);
+    for (auto& entry : storage) {
+        entry->*(&A::val) = 21;
+        entry->*(&A::key) = 22;
+        entry->*(&A::dum) = 23;
+    }
+    for (const auto& entry : storage) {
+        CHECK( entry->*(&A::val) == 21);
+        CHECK( entry->*(&A::key) == 22);
+        CHECK( entry->*(&A::dum) == 23);
+    }
+}
+

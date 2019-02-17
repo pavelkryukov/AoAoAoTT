@@ -240,6 +240,10 @@ public:
 
     const_iterator begin() const noexcept { return storage.cbegin(); }
     const_iterator end() const noexcept { return storage.cend(); }
+    const_iterator cbegin() const noexcept { return storage.cbegin(); }
+    const_iterator cend() const noexcept { return storage.cend(); }
+    iterator begin() noexcept { return storage.begin(); }
+    iterator end() noexcept { return storage.end(); }
 
     class Iface : private T
     {
@@ -425,16 +429,39 @@ public:
         }
     };
 
+    class iterator;
     class const_iterator : private ConstIface
     {
     public:
         const_iterator(const SoA<T>* base, std::size_t index) : ConstIface(base, index) { }
+
         bool operator!=(const const_iterator& rhs) { return this->get_index() != rhs.get_index(); }
+        bool operator!=(const iterator& rhs) { return this->get_index() != rhs.get_index(); }
+
         const_iterator& operator++() { this->inc_index(); return *this; }
+
         ConstIface& operator*() { return *this; }
     };
-    const_iterator begin() const noexcept { return const_iterator{ this, 0}; }
-    const_iterator end() const noexcept { return const_iterator{ this, size}; }
+    
+    class iterator : private Iface
+    {
+    public:
+        iterator(SoA<T>* base, std::size_t index) : Iface(base, index) { }
+
+        bool operator!=(const iterator& rhs) { return this->get_index() != rhs.get_index(); }
+        bool operator!=(const const_iterator& rhs) { return this->get_index() != rhs.get_index(); }
+
+        iterator& operator++() { this->inc_index(); return *this; }
+
+        Iface& operator*() { return *this; }
+    };
+
+    const_iterator cbegin() const noexcept { return const_iterator{ this, 0}; }
+    const_iterator cend() const noexcept { return const_iterator{ this, size}; }
+    const_iterator begin() const noexcept { return cbegin(); }
+    const_iterator end() const noexcept { return cend(); }
+    iterator begin() noexcept { return iterator{ this, size}; }
+    iterator end() noexcept { return iterator{ this, size}; }
 private:
     std::vector<char> storage;
     std::size_t size;
