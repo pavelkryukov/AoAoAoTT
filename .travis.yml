@@ -24,7 +24,7 @@ compiler:
 script:
   - if [ $CXX == g++ ] && [ "$TRAVIS_OS_NAME" == "linux" ]; then CXX=g++-7; fi
   - cd test
-  - make CXXFLAGS='-fprofile-arcs -ftest-coverage -g' test
+  - make CXXFLAGS='-fprofile-arcs -ftest-coverage -g' LDFLAGS='-lgcov --coverage' test
 
 after_success:
   - bash <(curl -s https://codecov.io/bash) || echo "Codecov did not collect coverage reports"
