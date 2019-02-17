@@ -6,6 +6,13 @@ sudo: false
 
 dist: xenial
 
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - libstdc++-7
+
 branches:
   only:
   - master
