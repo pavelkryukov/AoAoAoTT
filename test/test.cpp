@@ -33,7 +33,7 @@ struct A {
 
 struct EmptyStruct {};
 
-namespace struct_reader
+namespace ao_ao_ao_tt::struct_reader
 {
     static_assert(std::is_same_v<as_type_list<A>, type_list<int, int, int>>);
     static_assert(std::is_same_v<as_type_list<EmptyStruct>, type_list<>>);
