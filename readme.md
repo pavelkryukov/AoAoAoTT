@@ -12,9 +12,9 @@ AoAoAoTT is a framework to easily switch between AoS and SoA data structures.
 
 ## Example
 
-```c++
+Assume you have some straightforward data structure:
 
-// The structure is defined in a straightforward C/C++ manner.
+```c++
 struct SomeDataStructure
 {
     char key[256];
@@ -22,7 +22,10 @@ struct SomeDataStructure
     int previous_value;
     bool valid;
 };
+```
 
+Iterating an array of such structures is a pretty clear operation. The only change is the magical `obj->*(&Class::member)` operator used instead of a simple `obj.member` syntax.
+```c++
 int find_in_aos(const char* data)
 {
     // get a reference to some array of 200 structures;
@@ -32,15 +35,14 @@ int find_in_aos(const char* data)
             return i;
     return -1;
 }
+```
 
+However, code for structure of array looks exactly the same, wherease we are iterating the consequent block of memory now!
+```c++
 int find_in_soa(const char* data)
 {
     // get a reference to some sturcture of 200 arrays
     const SoA<SomeDataStructure>& vector = get_vector();
-    
-    // The code is absolutely equivalent to the code above;
-    // however, we are iterating the consequent block of memory
-    // and therefore we can be faster due to spatial locality
     for (size_t i = 0; i < 200; ++i)
         if (strncmp(data, vector[i]->*(&SomeDataStructure::key), 256))
             return i;
