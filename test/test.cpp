@@ -31,14 +31,15 @@
 
 #define STRINGIZE(s) STRINGIZE_H(s)
 #define STRINGIZE_H(s) #s
-#define CONTAINER_STR STRINGIZE(CONTAINER)
+#define TEST_CONTAINER_CASE(x) TEST_CASE(STRINGIZE(CONTAINER) ": " x)
 
 using namespace ao_ao_ao_tt;
 
-struct EmptyStruct {};
-
-TEST_CASE(CONTAINER_STR "Empty structures")
+TEST_CONTAINER_CASE("Empty structures")
 {
+    using namespace ao_ao_ao_tt::loophole_ns;
+    struct EmptyStruct {};
+    static_assert(std::is_same_v<as_type_list<EmptyStruct>, type_list<>>);
     CONTAINER<EmptyStruct>();
 }
 
@@ -51,10 +52,9 @@ struct A {
 namespace ao_ao_ao_tt::loophole_ns
 {
     static_assert(std::is_same_v<as_type_list<A>, type_list<int, int, int>>);
-    static_assert(std::is_same_v<as_type_list<EmptyStruct>, type_list<>>);
 }
 
-TEST_CASE(CONTAINER_STR " initialize and r/w")
+TEST_CONTAINER_CASE("initialize and r/w")
 {
     CONTAINER<A> storage( 10);
     storage[3]->*(&A::key) = 10;
@@ -68,14 +68,14 @@ TEST_CASE(CONTAINER_STR " initialize and r/w")
     CHECK( storage[4]->*(&A::val) == 6 );
 }
 
-TEST_CASE(CONTAINER_STR " get() interface")
+TEST_CONTAINER_CASE("get() interface")
 {
     CONTAINER<A> storage(10);
     storage[2].get<&A::val>() = 234;
     CHECK( storage[2].get<&A::val>() == 234 );
 }
 
-TEST_CASE(CONTAINER_STR " assign structure")
+TEST_CONTAINER_CASE("assign structure")
 {
     CONTAINER<A> storage( 10);
     const A x{3, 7, 11};
@@ -90,7 +90,7 @@ TEST_CASE(CONTAINER_STR " assign structure")
     CHECK( storage[3]->*(&A::dum) == 8 );
 }
 
-TEST_CASE(CONTAINER_STR " constant functions")
+TEST_CONTAINER_CASE("constant functions")
 {
     CONTAINER<A> storage( 10);
     storage[3]->*(&A::key) = 10;
@@ -109,14 +109,14 @@ struct WithArray {
 
 static_assert(sizeof(WithArray) == sizeof(int) + 16);
 
-TEST_CASE(CONTAINER_STR " structure with array")
+TEST_CONTAINER_CASE("structure with array")
 {
     CONTAINER<WithArray> storage(10);
     std::memset(&(storage[3]->*(&WithArray::array)), 0x11, 16);
     CHECK( (storage[3]->*(&WithArray::array))[8] == 0x11);
 }
 
-TEST_CASE(CONTAINER_STR " assign array")
+TEST_CONTAINER_CASE("assign array")
 {
     CONTAINER<WithArray> storage( 10);
     WithArray hw{ 16, "Hello World!!!!"};
@@ -133,14 +133,14 @@ struct DefaultInitializer
 
 static_assert(!std::is_trivially_constructible_v<DefaultInitializer>);
 
-TEST_CASE(CONTAINER_STR " default initialization")
+TEST_CONTAINER_CASE("default initialization")
 {
     CONTAINER<DefaultInitializer> storage( 10);
     CHECK( storage[2]->*(&DefaultInitializer::x) == 9 );
     CHECK( storage[3]->*(&DefaultInitializer::x) == 9 );
 }
 
-TEST_CASE(CONTAINER_STR " initialization via copies")
+TEST_CONTAINER_CASE("initialization via copies")
 {
     DefaultInitializer example{ 234, 123};
     CONTAINER<DefaultInitializer> storage( 10, example);
@@ -149,7 +149,7 @@ TEST_CASE(CONTAINER_STR " initialization via copies")
     CHECK( storage[3]->*(&DefaultInitializer::x) == 234 );
 }
 
-TEST_CASE(CONTAINER_STR " resize by example")
+TEST_CONTAINER_CASE("resize by example")
 {
     DefaultInitializer example{ 234, 123};
     CONTAINER<DefaultInitializer> storage( 10);
@@ -158,29 +158,27 @@ TEST_CASE(CONTAINER_STR " resize by example")
     CHECK( storage[15]->*(&DefaultInitializer::x) == 234 );
 }
 
-struct ConstantMember
+TEST_CONTAINER_CASE("structure with constant member")
 {
-    const int x = 9;
-    int y = 0;
-};
-
-TEST_CASE(CONTAINER_STR " structure with constant member")
-{
+    struct ConstantMember
+    {
+        const int x = 9;
+        int y = 0;
+    };
     CONTAINER<ConstantMember> storage( 10);
     storage.resize(20);
     CHECK( storage[5]->*(&ConstantMember::x) == 9 );
     CHECK( storage[15]->*(&ConstantMember::x) == 9 );
 }
 
-struct WithA {
-    A a;
-    int val;
-    int key;
-    int dum;
-};
-
-TEST_CASE(CONTAINER_STR " allow substructure")
+TEST_CONTAINER_CASE("allow substructure")
 {
+    struct WithA {
+        A a;
+        int val;
+        int key;
+        int dum;
+    };
     CONTAINER<WithA> storage( 10);
     const A x{3, 7, 11};
     const WithA y{x, 4, 8, 12};
@@ -190,18 +188,17 @@ TEST_CASE(CONTAINER_STR " allow substructure")
     CHECK( storage[5]->*(&WithA::dum) == 12 );
 }
 
-struct HasMethod
+TEST_CONTAINER_CASE("aggregate and run method")
 {
-    int alain;
-    int delon;
-    void drink_double_bourbon()
+    struct HasMethod
     {
-        std::swap(alain, delon);
-    }
-};
-
-TEST_CASE(CONTAINER_STR " aggregate and run method")
-{
+        int alain;
+        int delon;
+        void drink_double_bourbon()
+        {
+            std::swap(alain, delon);
+        }
+    };
     CONTAINER<HasMethod> storage( 10);
     storage[4] = HasMethod{33, 44};
     auto val = storage[4].aggregate_object();
@@ -211,9 +208,4 @@ TEST_CASE(CONTAINER_STR " aggregate and run method")
     CHECK( val.delon == 33 );
     CHECK( storage[4]->*(&HasMethod::alain) == 33 );
     CHECK( storage[4]->*(&HasMethod::delon) == 44 );
-}
-
-TEST_CASE(CONTAINER_STR " iterator")
-{
-    
 }

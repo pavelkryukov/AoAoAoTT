@@ -10,6 +10,10 @@ test-soa.o: test.cpp ../aoaoaott.hpp
 test: test-aos.o test-soa.o catch.o
 	$(CXX) $^ -o $@ $(LDFLAGS)
 	./$@
+    
+test-aos: test-aos.o catch.o
+	$(CXX) $^ -o $@ $(LDFLAGS)
+	./$@
 
 clean:
 	rm test *.o
