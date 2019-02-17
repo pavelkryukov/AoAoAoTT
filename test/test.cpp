@@ -213,11 +213,14 @@ TEST_CONTAINER_CASE("aggregate and run method")
 TEST_CONTAINER_CASE("const iterator")
 {
     CONTAINER<A> storage(10, { 11, 12, 13});
+    size_t i = 0;
     for (const auto& entry : storage) {
         CHECK( entry->*(&A::val) == 11);
         CHECK( entry->*(&A::key) == 12);
         CHECK( entry->*(&A::dum) == 13);
+        ++i
     }
+    CHECK(i == 10);
 }
 
 TEST_CONTAINER_CASE("mutable iterator")
