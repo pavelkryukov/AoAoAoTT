@@ -29,7 +29,7 @@
 namespace struct_reader {
     // Based on public domain code authored by Alexandr Poltavsky
     // https://github.com/alexpolt/luple
-    template<typename... TT> struct type_list {};
+    template<typename... TT> struct type_list { static constexpr size_t size = sizeof...(TT); };
     template<typename T, int N, int M = 0> struct tlist_get;
     template<int N, int M, typename T, typename... TT> struct tlist_get< type_list<T, TT...>, N, M > {
         static_assert(N < (int) sizeof...(TT)+1 + M, "type index out of bounds");
@@ -112,6 +112,43 @@ namespace struct_reader {
     //and here is our hot and fresh out of kitchen type list (alias template)
     template<typename T>
     using as_type_list = decltype(get_type_list< T >(std::make_integer_sequence< int, fields_number<T>(0) >{}));
+    
+    template<typename TL, size_t N>
+    constexpr std::size_t nth_member_offset = sizeof(tlist_get_t<TL, N - 1>) + nth_member_offset<TL, N - 1>;
+
+    template<typename TL>
+    constexpr std::size_t nth_member_offset<TL, 0> = 0;
+
+    template<typename T, size_t N>
+    void copy_nth_member(const T& src, char* dst, size_t index, size_t size)
+    {
+        using TL = as_type_list<T>;
+        using R = tlist_get_t<TL, N>;
+        *reinterpret_cast<R*>(dst + nth_member_offset<TL, N> * size + index * sizeof(R)) =
+            *reinterpret_cast<const R*>(reinterpret_cast<const char*>(&src) + nth_member_offset<TL, N>);
+    }
+
+    template<typename T, size_t N>
+    struct copy_n_members
+    {
+        void operator()(const T& src, char* dst, size_t index, size_t size) {
+            copy_nth_member<T, N - 1>(src, dst, index, size);
+            copy_n_members<T, N - 1>()(src, dst, index, size);
+        }
+    };
+
+    template<typename T>
+    struct copy_n_members<T, 0>
+    {
+        void operator()(const T&, char*, size_t, size_t) { }
+    };
+
+    template<typename T>
+    void copy_all_members(const T& src, char* dst, size_t index, size_t size)
+    {
+        using TL = as_type_list<T>;
+        copy_n_members<T, TL::size>()(src, dst, index, size);
+    }
 }
 
 template<typename T, typename = std::enable_if_t<std::is_trivial<T>::value>>
@@ -178,6 +215,9 @@ class SoA {
         }
     protected:
         BaseIface(std::size_t index, std::size_t size) : index(index), size(size) { }
+        constexpr auto get_size()  const noexcept { return size; }
+        constexpr auto get_index() const noexcept { return index; }
+        
         template<typename Class, typename Type> static Type get_pointer_type(Type Class::*);
 
         template<typename R>
@@ -197,6 +237,7 @@ class SoA {
     class Iface : private BaseIface
     {
         SoA<T>* base;
+
     public:
         Iface( SoA<T>* b, std::size_t index, std::size_t size) : BaseIface(index, size), base(b) { }
 
@@ -211,6 +252,11 @@ class SoA {
         R& operator->*(R T::* field)
         {
             return *reinterpret_cast<R*>(base->storage.data() + this->get_offset(field));
+        }
+
+        void operator=(const T& rhs)
+        {
+            struct_reader::copy_all_members(rhs, base->storage.data(), this->get_index(), this->get_size());
         }
     };
 

@@ -38,6 +38,13 @@ struct WithArray {
     char array[1024];
 };
 
+struct B {
+    A x;
+    int val;
+    int key;
+    int dum;
+};
+
 TEST_CASE("AoS: initialize and r/w")
 {
     AoS<A> storage( 10);
@@ -97,6 +104,16 @@ TEST_CASE("SoA: structure with array")
 TEST_CASE("AoS: assign structure")
 {
     AoS<A> storage( 10);
+    storage[3] = A{10, 3, 8};
+
+    CHECK( storage[3]->*(&A::val) == 10 );
+    CHECK( storage[3]->*(&A::key) == 3 );
+    CHECK( storage[3]->*(&A::dum) == 8 );
+}
+
+TEST_CASE("SoA: assign structure")
+{
+    SoA<A> storage( 10);
     storage[3] = A{10, 3, 8};
 
     CHECK( storage[3]->*(&A::val) == 10 );
