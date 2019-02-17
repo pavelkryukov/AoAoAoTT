@@ -28,8 +28,10 @@
 struct A {
     int val;
     int key;
-    int dum; 
+    int dum;
 };
+
+static_assert(std::is_same_v<struct_reader::as_type_list<A>, struct_reader::type_list<int, int, int>>);
 
 struct WithArray {
     int size;
@@ -84,7 +86,6 @@ TEST_CASE("SoA: get() interface")
     storage[2].get<&A::val>() = 234;
     CHECK( storage[2].get<&A::val>() == 234 );
 }
-
 
 TEST_CASE("SoA: structure with array")
 {
