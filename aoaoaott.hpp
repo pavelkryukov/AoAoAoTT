@@ -28,7 +28,7 @@
 
 namespace ao_ao_ao_tt {
 
-namespace struct_reader {
+namespace loophole_ns {
     // Based on public domain code authored by Alexandr Poltavsky
     // https://github.com/alexpolt/luple
     template<typename... TT> struct type_list { static constexpr size_t size = sizeof...(TT); };
@@ -50,79 +50,89 @@ namespace struct_reader {
         static const int value = -1;
     };
 
-    //this is the main type list, add your own types here
-    using type_list_t = type_list<
-                        void *, bool, char, unsigned char, signed char, short, int, long, long long, 
-                        unsigned short, unsigned int, unsigned long, unsigned long long, 
-                        float, double, long double
-                    >;
-
-    //helper to get type using a templated conversion operator
-    template<typename T>
-    struct read_type {
-        template<typename U>
-        constexpr operator U() {
-            using noptr = std::remove_pointer_t<U>;
-            using nocon = std::remove_const_t<noptr>;
-            static_assert( tlist_get_n<T, U>::value != -1 || tlist_get_n<T, nocon>::value != -1, "no such type in type list");
-            constexpr int const tid = 0xFFFF, is_ptr = 1 << 16, is_con = 1 << 17;
-            data = tlist_get_n<T, U>::value;
-            if( data == -1 ) {
-                data = tlist_get_n<T, nocon>::value & tid;
-                data = data | (std::is_pointer<U>::value ? is_ptr : 0);
-                data = data | (std::is_const<noptr>::value ? is_con : 0);
-            }
-            return {};
-        }
-        int data;
+    /*
+        tag<T,N> generates friend declarations and helps with overload resolution.
+        There are two types: one with the auto return type, which is the way we read types later.
+        The second one is used in the detection of instantiations without which we'd get multiple
+        definitions.
+    */
+    template<typename T, int N>
+    struct tag {
+        friend auto loophole(tag<T,N>);
+        constexpr friend int cloophole(tag<T,N>);
     };
 
-    using read_type_t = read_type< type_list_t >;
 
-    //here we're using overload resolution to get a data member type
-    template<typename T, int... N>
-    constexpr auto get_type_id(int n) {
-        read_type_t tid[sizeof...(N)]{};
-        T{ tid[N]... };
-        return tid[n].data;
+    /*
+        The definitions of friend functions.
+    */
+    template<typename T, typename U, int N, bool B>
+    struct fn_def {
+        friend auto loophole(tag<T,N>) { return U{}; }
+        constexpr friend int cloophole(tag<T,N>) { return 0; }
+    };
+
+    /*
+        This specialization is to avoid multiple definition errors.
+    */
+    template<typename T, typename U, int N>
+    struct fn_def<T, U, N, true> {};
+
+    /*
+        This has a templated conversion operator which in turn triggers instantiations.
+        Important point, using sizeof seems to be more reliable. Also default template
+        arguments are "cached" (I think). To fix that I provide a U template parameter to
+        the ins functions which do the detection using constexpr friend functions and SFINAE.
+    */
+    template<typename T, int N>
+    struct c_op {
+        template<typename U, int M> static auto ins(...) -> int;
+        template<typename U, int M, int = cloophole(tag<T,M>{}) > static auto ins(int) -> char;
+
+        template<typename U, int = sizeof(fn_def<T, U, N, sizeof(ins<U, N>(0)) == sizeof(char)>)>
+        operator U();
+    };
+
+    /*
+        Here we detect the data type field number. The byproduct is instantiations.
+        Uses list initialization. Won't work for types with user provided constructors.
+        In C++17 there is std::is_aggregate which can be added later.
+    */
+
+    template<typename T, int... NN>
+    constexpr int fields_number(...) { return sizeof...(NN)-1; }
+
+    template<typename T, int... NN>
+    constexpr auto fields_number(int) -> decltype(T{ c_op<T,NN>{}... }, 0) {
+        return fields_number<T, NN..., sizeof...(NN)>(0);
     }
 
-    //helper to rebuild the type
-    template<typename T, int tid, int is_pointer, int is_const>
-    constexpr auto get_type() {
-        using type = tlist_get_t<T, tid>;
-        using ctype = std::conditional_t< (bool)is_const, std::add_const_t<type>, type >;
-        using ptype = std::conditional_t< (bool)is_pointer, std::add_pointer_t<ctype>, ctype >;
-        return ptype{};
-    }
+    /*
+        This is a helper to turn a data structure into a type list.
+        Usage is: loophole_ns::as_type_list< data_t >
+        I keep dependency on luple (a lightweight tuple of my design) because it's handy
+        to turn a structure into luple (tuple). luple has the advantage of more stable layout
+        across compilers and we can reinterpret_cast between the data structure and luple.
+        More details are in the luple.h header.
+    */
 
-    static constexpr int const tid = 0xFFFF;
-    static constexpr int const is_ptr = 1 << 16;
-    static constexpr int const is_con = 1 << 17;
+    template<typename T, typename U>
+    struct loophole_type_list;
 
-    //read struct data member types and put it into a type list
-    template<typename T, int... N>
-    constexpr auto get_type_list(std::integer_sequence<int, N...>) {
-        constexpr int t[] = { get_type_id<T, N...>(N)... };
-        (void)t; // maybe unused if N == 0
-        return type_list< decltype(get_type<type_list_t, t[N]&tid, t[N]&is_ptr, t[N]&is_con>())...>{};
-    }
+    template<typename T, int... NN>
+    struct loophole_type_list< T, std::integer_sequence<int, NN...> > {
+        using type = type_list< decltype(loophole(tag<T, NN>{}))... >;
+    };
 
-    //get fields number using expression SFINAE
-    template<typename T, int... N>
-    constexpr int fields_number(...) { return sizeof...(N)-1; }
-
-    template<typename T, int... N>
-    constexpr auto fields_number(int) -> decltype(T{ (N,read_type_t{})... }, sizeof(0)) { return fields_number<T, N..., 0>(0); }
-
-    //and here is our hot and fresh out of kitchen type list (alias template)
     template<typename T>
-    using as_type_list = decltype(get_type_list< T >(std::make_integer_sequence< int, fields_number<T>(0) >{}));
-} // namespace struct_reader
+    using as_type_list =
+        typename loophole_type_list<T, std::make_integer_sequence<int, fields_number<T>(0)>>::type;
+
+} // namespace loophole_ns
 
 namespace tlist_helpers
 {
-    using namespace struct_reader;
+    using namespace loophole_ns;
 
     template<typename TL, size_t N>
     constexpr std::size_t nth_member_offset = sizeof(tlist_get_t<TL, N - 1>) + nth_member_offset<TL, N - 1>;

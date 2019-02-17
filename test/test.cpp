@@ -33,7 +33,7 @@ struct A {
 
 struct EmptyStruct {};
 
-namespace ao_ao_ao_tt::struct_reader
+namespace ao_ao_ao_tt::loophole_ns
 {
     static_assert(std::is_same_v<as_type_list<A>, type_list<int, int, int>>);
     static_assert(std::is_same_v<as_type_list<EmptyStruct>, type_list<>>);
@@ -42,13 +42,6 @@ namespace ao_ao_ao_tt::struct_reader
 struct WithArray {
     int size;
     char array[1024];
-};
-
-struct BwithA {
-    A x;
-    int val;
-    int key;
-    int dum;
 };
 
 using namespace ao_ao_ao_tt;
@@ -247,4 +240,33 @@ TEST_CASE("SoA: structure with constant member")
     storage.resize(20);
     CHECK( storage[5]->*(&ConstantMember::x) == 9 );
     CHECK( storage[15]->*(&ConstantMember::x) == 9 );
+}
+
+struct WithA {
+    A a;
+    int val;
+    int key;
+    int dum;
+};
+
+TEST_CASE("AoS: allow substructure")
+{
+    AoS<WithA> storage( 10);
+    const A x{3, 7, 11};
+    const WithA y{x, 4, 8, 12};
+    storage[5] = y;
+
+    CHECK( (storage[5]->*(&WithA::a)).dum == 11 );
+    CHECK( storage[5]->*(&WithA::dum) == 12 );
+}
+
+TEST_CASE("SoA: allow substructure")
+{
+    SoA<WithA> storage( 10);
+    const A x{3, 7, 11};
+    const WithA y{x, 4, 8, 12};
+    storage[5] = y;
+
+    CHECK( (storage[5]->*(&WithA::a)).dum == 11 );
+    CHECK( storage[5]->*(&WithA::dum) == 12 );
 }
