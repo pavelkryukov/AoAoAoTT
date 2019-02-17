@@ -222,12 +222,26 @@ namespace tlist_helpers
 template<typename T>
 class AoS {
     static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
-    struct Iface : private T
+public:
+    class Iface;
+
+    AoS() : AoS(0) { }
+    explicit AoS(std::size_t size) : storage(size) { }
+    AoS(std::size_t size, const T& value) : storage(size, Iface(value)) { }
+
+    void resize(std::size_t size) { storage.resize( size); }
+    void resize(std::size_t size, const T& value) { storage.resize( size, Iface(value)); }
+
+    Iface& operator[](std::size_t index) noexcept { return storage[index]; }
+    const Iface& operator[](std::size_t index) const noexcept { return storage[index]; }
+
+    class Iface : private T
     {
+    public:
         Iface() : T() { }
         explicit Iface(const T& value) : T(value) { }
         explicit Iface(T&& value) : T(std::move(value)) { }
-        
+
         T& operator=(const T& rhs) noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
         {
             T::operator=(rhs);
@@ -267,25 +281,47 @@ class AoS {
         T aggregate_object() const noexcept { return *this; }
     };
     std::vector<Iface> storage;
-public:
-    AoS() { }
-    explicit AoS(std::size_t size) : storage(size) { }
-    AoS(std::size_t size, const T& value) : storage(size, Iface(value)) { }
-
-    void resize(std::size_t size) { storage.resize( size); }
-    void resize(std::size_t size, const T& value) { storage.resize( size, Iface(value)); }
-
-    Iface& operator[](std::size_t index) noexcept { return storage[index]; }
-    const Iface& operator[](std::size_t index) const noexcept { return storage[index]; }
 };
 
 template<typename T>
 class SoA {
     static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
+public:
+    class Iface;
+    class ConstIface;
 
-    std::vector<char> storage;
-    std::size_t size;
-    class BaseIface {
+    SoA() : SoA(0) { }
+    explicit SoA(std::size_t s) : size(0) { resize(s); }
+    SoA(std::size_t s, const T& value) : size(0) { resize(s, value); }
+
+    void resize(std::size_t s)
+    {
+        if constexpr(std::is_trivially_constructible_v<T>)
+            resize_memory(s);
+        else
+            resize(s, T());
+    }
+
+    void resize(std::size_t s, const T& value)
+    {
+        size_t old_size = size;
+        resize_memory(s);
+        for (size_t i = old_size; i < size; ++i)
+            Iface( this, i).copy_object(value);
+    }
+
+    Iface operator[](std::size_t index) noexcept { return Iface{ this, index}; }
+    ConstIface operator[](std::size_t index) const noexcept { return ConstIface{ this, index}; }
+
+    class BaseIface
+    {
+    public:
+        T aggregate_object() const noexcept
+        {
+            T result{};
+            tlist_helpers::copy_all_members_from_storage(base->storage.data(), &result, this->get_index(), this->get_size());
+            return result;
+        }
     private:
         const SoA<T>* base;
         size_t index;
@@ -316,13 +352,6 @@ class SoA {
             using Type = decltype(this->get_pointer_type(ptr));
             return member_offset(ptr) * get_size() + index * sizeof(Type);
         }
-    public:
-        T aggregate_object() const noexcept 
-        {
-            T result{};
-            tlist_helpers::copy_all_members_from_storage(base->storage.data(), &result, this->get_index(), this->get_size());
-            return result;
-        }
     };
 
     class ConstIface : public BaseIface
@@ -346,8 +375,6 @@ class SoA {
 
     class Iface : public BaseIface
     {
-        SoA<T>* mutable_base;
-
     public:
         Iface( SoA<T>* b, std::size_t index) : BaseIface(b, index), mutable_base(b) { }
 
@@ -364,17 +391,6 @@ class SoA {
             return *reinterpret_cast<R*>(mutable_base->storage.data() + this->get_offset(field));
         }
 
-        void copy_object(const T& rhs) const noexcept
-        {
-            tlist_helpers::copy_all_members_to_storage(rhs, mutable_base->storage.data(), this->get_index(), this->get_size());
-        }
-
-        void move_object(T&& rhs) const noexcept
-        {            
-            // Do not care about move semantics since we support only trivial structures so far
-            tlist_helpers::copy_all_members_to_storage(rhs, mutable_base->storage.data(), this->get_index(), this->get_size());
-        }
-
         void operator=(const T& rhs) const noexcept
         {
             static_assert(std::is_copy_assignable_v<T>, "Object cannot be assigned because its copy assignment operator is implicitly deleted");
@@ -384,42 +400,36 @@ class SoA {
         void operator=(T&& rhs) const noexcept
         {
             static_assert(std::is_move_assignable_v<T>, "Object cannot be assigned because its move assignment operator is implicitly deleted");
-            copy_object(rhs);
+            move_object(std::move(rhs));
+        }
+    private:
+        friend class SoA<T>;
+        SoA<T>* mutable_base;
+
+        void copy_object(const T& rhs) const noexcept
+        {
+            tlist_helpers::copy_all_members_to_storage(rhs, mutable_base->storage.data(), this->get_index(), this->get_size());
+        }
+
+        void move_object(T&& rhs) const noexcept
+        {
+            // Do not care about move semantics since we support only trivial structures so far
+            tlist_helpers::copy_all_members_to_storage(rhs, mutable_base->storage.data(), this->get_index(), this->get_size());
         }
     };
 
+private:
+    std::vector<char> storage;
+    std::size_t size;
 
     friend class Iface;
     friend class ConstIface;
 
-    void resize_memory( std::size_t s)
+    void resize_memory(std::size_t s)
     {
         storage.resize(s * sizeof(T));
-        size = s;        
+        size = s;
     }
-public:
-    SoA() = default;
-    explicit SoA(std::size_t s) : size(0) { resize(s); }
-    SoA(std::size_t s, const T& value) : size(0) { resize(s, value); }
-
-    void resize(std::size_t s)
-    {
-        if constexpr(std::is_trivially_constructible_v<T>)
-            resize_memory(s);
-        else
-            resize(s, T());
-    }
-
-    void resize(std::size_t s, const T& value)
-    {
-        size_t old_size = size;
-        resize_memory(s);
-        for (size_t i = old_size; i < size; ++i)
-            Iface( this, i).copy_object(value);
-    }
-
-    Iface operator[](std::size_t index) noexcept { return Iface{ this, index}; }
-    ConstIface operator[](std::size_t index) const noexcept { return ConstIface{ this, index}; }
 };
 
 } // namespace ao_ao_ao_tt
