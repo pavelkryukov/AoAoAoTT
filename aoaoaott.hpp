@@ -166,8 +166,9 @@ namespace tlist_helpers
     }
 }
 
-template<typename T, typename = std::enable_if_t<std::is_trivial<T>::value>>
+template<typename T>
 class AoS {
+    static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
     struct Iface : private T
     {
         T& operator=(const T& rhs) noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
@@ -216,8 +217,10 @@ public:
     const Iface& operator[](std::size_t index) const noexcept { return storage[index]; }
 };
 
-template<typename T, typename = std::enable_if_t<std::is_trivial<T>::value>>
+template<typename T>
 class SoA {
+    static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
+
     std::vector<char> storage;
     std::size_t size;
     class BaseIface {
@@ -308,8 +311,18 @@ class SoA {
     friend class ConstIface;
 public:
     SoA() = default;
-    SoA(std::size_t s) : size(s) { resize(s); }
-    void resize(std::size_t s) { storage.resize(s * sizeof(T)); }
+    SoA(std::size_t s) : size(0) { resize(s); }
+    void resize(std::size_t s)
+    {
+        size_t old_size = size;
+        storage.resize(s * sizeof(T));
+        size = s;
+        if constexpr (!std::is_trivially_constructible_v<T>)
+            for (size_t i = old_size; i < size; ++i)
+                Iface( this, i, size) = T();
+        else
+            (void)old_size;
+    }
 
     Iface operator[](std::size_t index) noexcept { return Iface{ this, index, size}; }
     ConstIface operator[](std::size_t index) const noexcept { return ConstIface{ this, index, size}; }

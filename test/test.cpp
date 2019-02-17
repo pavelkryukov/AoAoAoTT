@@ -37,13 +37,12 @@ struct EmptyStruct {};
 
 static_assert(std::is_same_v<struct_reader::as_type_list<EmptyStruct>, struct_reader::type_list<>>);
 
-
 struct WithArray {
     int size;
     char array[1024];
 };
 
-struct B {
+struct BwithA {
     A x;
     int val;
     int key;
@@ -164,4 +163,26 @@ TEST_CASE("SoA: constant functions")
     CHECK( const_ref[3]->*(&A::key) == 10 );
     CHECK( const_ref[3]->*(&A::val) == 3 );
     CHECK( const_ref[3].get<&A::val>() == 3 );
+}
+
+struct DefaultInitializer
+{
+    int x = 9;
+    int y = 0;
+};
+
+static_assert(!std::is_trivially_constructible_v<DefaultInitializer>);
+
+TEST_CASE("AoS: default initialization")
+{
+    AoS<DefaultInitializer> storage( 10);
+    CHECK( storage[2]->*(&DefaultInitializer::x) == 9 );
+    CHECK( storage[3]->*(&DefaultInitializer::x) == 9 );
+}
+
+TEST_CASE("SoA: default initialization")
+{
+    SoA<DefaultInitializer> storage( 10);
+    CHECK( storage[2]->*(&DefaultInitializer::x) == 9 );
+    CHECK( storage[3]->*(&DefaultInitializer::x) == 9 );
 }
