@@ -77,7 +77,7 @@ TEST_CASE("SoA: initialize and r/w")
     storage[3]->*(&A::val) = 3;
     storage[4]->*(&A::key) = 9;
     storage[4]->*(&A::val) = 6;
-    
+ 
     CHECK( storage[3]->*(&A::key) == 10 );
     CHECK( storage[3]->*(&A::val) == 3 );
     CHECK( storage[4]->*(&A::key) == 9 );
@@ -130,4 +130,28 @@ TEST_CASE("SoA: assign structure")
     CHECK( storage[3]->*(&A::val) == 10 );
     CHECK( storage[3]->*(&A::key) == 3 );
     CHECK( storage[3]->*(&A::dum) == 8 );
+}
+
+TEST_CASE("AoS: constant functions")
+{
+    AoS<A> storage( 10);
+    storage[3]->*(&A::key) = 10;
+    storage[3]->*(&A::val) = 3;
+
+    const auto& const_ref = storage;
+    CHECK( const_ref[3]->*(&A::key) == 10 );
+    CHECK( const_ref[3]->*(&A::val) == 3 );
+    CHECK( const_ref[3].get<&A::val>() == 3 );
+}
+
+TEST_CASE("SoA: constant functions")
+{
+    SoA<A> storage( 10);
+    storage[3]->*(&A::key) = 10;
+    storage[3]->*(&A::val) = 3;
+
+    const auto& const_ref = storage;
+    CHECK( const_ref[3]->*(&A::key) == 10 );
+    CHECK( const_ref[3]->*(&A::val) == 3 );
+    CHECK( const_ref[3].get<&A::val>() == 3 );
 }
