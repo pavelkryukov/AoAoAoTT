@@ -28,7 +28,7 @@ int find_in_aos(const char* data)
     // get a reference to some array of 200 structures;
     const AoS<SomeDataStructure>& vector = get_vector();
     for (size_t i = 0; i < 200; ++i)
-        if (strncmp(data, vector[i]->(&SomeDataStructure::key), 256)
+        if (strncmp(data, vector[i]->*(&SomeDataStructure::key), 256))
             return i;
     return -1;
 }
@@ -42,7 +42,7 @@ int find_in_soa(const char* data)
     // however, we are iterating the consequent block of memory
     // and therefore we can be faster due to spatial locality
     for (size_t i = 0; i < 200; ++i)
-        if (strncmp(data, vector[i]->(&SomeDataStructure::key), 256)
+        if (strncmp(data, vector[i]->*(&SomeDataStructure::key), 256))
             return i;
     return -1;
 }
