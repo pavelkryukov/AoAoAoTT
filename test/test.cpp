@@ -33,6 +33,11 @@ struct A {
 
 static_assert(std::is_same_v<struct_reader::as_type_list<A>, struct_reader::type_list<int, int, int>>);
 
+struct EmptyStruct {};
+
+static_assert(std::is_same_v<struct_reader::as_type_list<EmptyStruct>, struct_reader::type_list<>>);
+
+
 struct WithArray {
     int size;
     char array[1024];
@@ -44,6 +49,12 @@ struct B {
     int key;
     int dum;
 };
+
+TEST_CASE("Empty structures")
+{
+    AoS<EmptyStruct>();
+    SoA<EmptyStruct>();
+}
 
 TEST_CASE("AoS: initialize and r/w")
 {
