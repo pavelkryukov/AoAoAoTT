@@ -115,8 +115,13 @@ TEST_CASE("SoA: structure with array")
 TEST_CASE("AoS: assign structure")
 {
     AoS<A> storage( 10);
-    storage[3] = A{10, 3, 8};
+    const A x{3, 7, 11};
+    storage[2] = x; // copy assignment
+    storage[3] = A{10, 3, 8}; // move assignment
 
+    CHECK( storage[2]->*(&A::val) == 3 );
+    CHECK( storage[2]->*(&A::key) == 7 );
+    CHECK( storage[2]->*(&A::dum) == 11 );
     CHECK( storage[3]->*(&A::val) == 10 );
     CHECK( storage[3]->*(&A::key) == 3 );
     CHECK( storage[3]->*(&A::dum) == 8 );
@@ -125,8 +130,13 @@ TEST_CASE("AoS: assign structure")
 TEST_CASE("SoA: assign structure")
 {
     SoA<A> storage( 10);
-    storage[3] = A{10, 3, 8};
+    const A x{3, 7, 11};
+    storage[2] = x; // copy assignment
+    storage[3] = A{10, 3, 8}; // move assignment
 
+    CHECK( storage[2]->*(&A::val) == 3 );
+    CHECK( storage[2]->*(&A::key) == 7 );
+    CHECK( storage[2]->*(&A::dum) == 11 );
     CHECK( storage[3]->*(&A::val) == 10 );
     CHECK( storage[3]->*(&A::key) == 3 );
     CHECK( storage[3]->*(&A::dum) == 8 );

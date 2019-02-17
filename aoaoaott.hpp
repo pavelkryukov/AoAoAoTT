@@ -130,6 +130,7 @@ namespace tlist_helpers
 
     template<typename T, size_t N>
     void copy_nth_member(const T& src, char* dst, size_t index, size_t size)
+        noexcept(noexcept(std::is_nothrow_copy_assignable_v<tlist_get_t<as_type_list<T>, N>>))
     {
         using TL = as_type_list<T>;
         using R = tlist_get_t<TL, N>;
@@ -140,7 +141,9 @@ namespace tlist_helpers
     template<typename T, size_t N>
     struct copy_n_members
     {
-        void operator()(const T& src, char* dst, size_t index, size_t size) {
+        void operator()(const T& src, char* dst, size_t index, size_t size) const
+            noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
+        {
             copy_nth_member<T, N - 1>(src, dst, index, size);
             copy_n_members<T, N - 1>()(src, dst, index, size);
         }
@@ -149,11 +152,14 @@ namespace tlist_helpers
     template<typename T>
     struct copy_n_members<T, 0>
     {
-        void operator()(const T&, char*, size_t, size_t) { }
+        void operator()(const T&, char*, size_t, size_t) const
+            noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
+        { }
     };
 
     template<typename T>
     void copy_all_members(const T& src, char* dst, size_t index, size_t size)
+        noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
         using TL = as_type_list<T>;
         copy_n_members<T, TL::size>()(src, dst, index, size);
@@ -164,35 +170,38 @@ template<typename T, typename = std::enable_if_t<std::is_trivial<T>::value>>
 class AoS {
     struct Iface : private T
     {
-        T& operator=(const T& rhs) {
+        T& operator=(const T& rhs) noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
+        {
             T::operator=(rhs);
             return *this;
         }
-        T& operator=(T&& rhs) {
+
+        T& operator=(T&& rhs) noexcept(noexcept(std::is_nothrow_move_assignable_v<T>))
+        {
             T::operator=(std::move(rhs));
             return *this;
         }
 
         template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-        const auto& get() const
+        const auto& get() const noexcept
         {
             return this->*ptr;
         }
 
         template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-        auto& get()
+        auto& get() noexcept
         {
             return this->*ptr;
         }
 
         template<typename R>
-        R& operator->*(R T::* field)
+        R& operator->*(R T::* field) noexcept
         {
             return this->*field;
         }
 
         template<typename R>
-        const R& operator->*(R T::* field) const
+        const R& operator->*(R T::* field) const noexcept
         {
             return this->*field;
         }
@@ -203,8 +212,8 @@ public:
     AoS(std::size_t size) : storage(size) { }
     void resize(std::size_t size) { storage.resize( size); }
 
-    Iface& operator[](std::size_t index) { return storage[index]; }
-    const Iface& operator[](std::size_t index) const { return storage[index]; }
+    Iface& operator[](std::size_t index) noexcept { return storage[index]; }
+    const Iface& operator[](std::size_t index) const noexcept { return storage[index]; }
 };
 
 template<typename T, typename = std::enable_if_t<std::is_trivial<T>::value>>
@@ -216,7 +225,7 @@ class SoA {
         size_t index;
         size_t size;
         template<typename R>
-        static constexpr auto member_offset(R T::* member)
+        static constexpr auto member_offset(R T::* member) noexcept
         {
             return reinterpret_cast<std::ptrdiff_t>(
                   &(reinterpret_cast<T const volatile*>(NULL)->*member)
@@ -230,13 +239,13 @@ class SoA {
         template<typename Class, typename Type> static Type get_pointer_type(Type Class::*);
 
         template<typename R>
-        std::size_t get_offset(R T::* member) const
+        std::size_t get_offset(R T::* member) const noexcept
         {
             return member_offset(member) * size + index * sizeof(R);
         }
 
         template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-        std::size_t get_offset_template() const
+        std::size_t get_offset_template() const noexcept
         {
             using Type = decltype(this->get_pointer_type(ptr));
             return member_offset(ptr) * size + index * sizeof(Type);
@@ -251,20 +260,26 @@ class SoA {
         Iface( SoA<T>* b, std::size_t index, std::size_t size) : BaseIface(index, size), base(b) { }
 
         template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-        auto& get()
+        auto& get() const noexcept
         {
             using Type = decltype(this->get_pointer_type(ptr));
             return *reinterpret_cast<Type*>(base->storage.data() + this->template get_offset_template<ptr>());
         }
 
         template<typename R>
-        R& operator->*(R T::* field)
+        R& operator->*(R T::* field) const noexcept
         {
             return *reinterpret_cast<R*>(base->storage.data() + this->get_offset(field));
         }
 
-        void operator=(const T& rhs)
+        void operator=(const T& rhs) const noexcept
         {
+            tlist_helpers::copy_all_members(rhs, base->storage.data(), this->get_index(), this->get_size());
+        }
+
+        void operator=(T&& rhs) const noexcept
+        {
+            // Do not care about move semantics since we support only trivial structures so far
             tlist_helpers::copy_all_members(rhs, base->storage.data(), this->get_index(), this->get_size());
         }
     };
@@ -276,14 +291,14 @@ class SoA {
         ConstIface( const SoA<T>* b, std::size_t index, std::size_t size) : BaseIface(index, size), base(b) { }
 
         template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-        const auto& get() const
+        const auto& get() const noexcept
         {
             using Type = decltype(this->get_pointer_type(ptr));
             return *reinterpret_cast<const Type*>(base->storage.data() + this->template get_offset_template<ptr>());
         }
 
         template<typename R>
-        const R& operator->*(R T::* field) const
+        const R& operator->*(R T::* field) const noexcept
         {
             return *reinterpret_cast<const R*>(base->storage.data() + this->get_offset(field));
         }
@@ -296,8 +311,8 @@ public:
     SoA(std::size_t s) : size(s) { resize(s); }
     void resize(std::size_t s) { storage.resize(s * sizeof(T)); }
 
-    Iface operator[](std::size_t index) { return Iface{ this, index, size}; }
-    ConstIface operator[](std::size_t index) const { return ConstIface{ this, index, size}; }
+    Iface operator[](std::size_t index) noexcept { return Iface{ this, index, size}; }
+    ConstIface operator[](std::size_t index) const noexcept { return ConstIface{ this, index, size}; }
 };
 
 #endif
