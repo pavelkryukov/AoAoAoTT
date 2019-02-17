@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/pavelkryukov/AoAoAoTT.svg?branch=master)](https://travis-ci.com/pavelkryukov/AoAoAoTT)[![codecov](https://codecov.io/gh/pavelkryukov/aoaoaott/branch/master/graph/badge.svg)](https://codecov.io/gh/pavelkryukov/aoaoaott)
+
 # AoAoAoTT
 
 AoAoAoTT is a framework to easily switch between AoS and SoA data structures.
