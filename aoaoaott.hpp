@@ -282,15 +282,27 @@ class SoA {
             return *reinterpret_cast<R*>(base->storage.data() + this->get_offset(field));
         }
 
-        void operator=(const T& rhs) const noexcept
+        void copy_object(const T& rhs) const noexcept
         {
             tlist_helpers::copy_all_members(rhs, base->storage.data(), this->get_index(), this->get_size());
         }
 
-        void operator=(T&& rhs) const noexcept
-        {
+        void move_object(T&& rhs) const noexcept
+        {            
             // Do not care about move semantics since we support only trivial structures so far
             tlist_helpers::copy_all_members(rhs, base->storage.data(), this->get_index(), this->get_size());
+        }
+
+        void operator=(const T& rhs) const noexcept
+        {
+            static_assert(std::is_copy_assignable_v<T>, "Object cannot be assigned because its copy assignment operator is implicitly deleted");
+            copy_object(rhs);
+        }
+
+        void operator=(T&& rhs) const noexcept
+        {
+            static_assert(std::is_move_assignable_v<T>, "Object cannot be assigned because its move assignment operator is implicitly deleted");
+            copy_object(rhs);
         }
     };
 
@@ -340,7 +352,7 @@ public:
         size_t old_size = size;
         resize_memory(s);
         for (size_t i = old_size; i < size; ++i)
-            Iface( this, i, size) = value;
+            Iface( this, i, size).copy_object(value);
     }
 
     Iface operator[](std::size_t index) noexcept { return Iface{ this, index, size}; }

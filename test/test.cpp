@@ -222,3 +222,25 @@ TEST_CASE("SoA: resize by example")
     CHECK( storage[5]->*(&DefaultInitializer::x) == 9 );
     CHECK( storage[15]->*(&DefaultInitializer::x) == 234 );
 }
+
+struct ConstantMember
+{
+    const int x = 9;
+    int y = 0;
+};
+
+TEST_CASE("AoS: structure with constant member")
+{
+    AoS<ConstantMember> storage( 10);
+    storage.resize(20);
+    CHECK( storage[5]->*(&ConstantMember::x) == 9 );
+    CHECK( storage[15]->*(&ConstantMember::x) == 9 );
+}
+
+TEST_CASE("SoA: structure with constant member")
+{
+    SoA<ConstantMember> storage( 10);
+    storage.resize(20);
+    CHECK( storage[5]->*(&ConstantMember::x) == 9 );
+    CHECK( storage[15]->*(&ConstantMember::x) == 9 );
+}
