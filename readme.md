@@ -100,3 +100,10 @@ However, you can use `std::array` without problems:
 ### SoA has no reverse iterators
 
 Their implementation is just not good enough at the moment.
+
+
+## Thanks
+
+* [Paolo Crosetto](https://github.com/crosetto) for his inspiring [SoAvsAoS implementation](https://github.com/crosetto/SoAvsAoS)
+* [Alexandr Poltavsky](https://github.com/alexpolt) for public domain implementation of Loophole
+* [Alexandr Titov](https://github.com/alexander-titov) for assistance with benchmarking
