@@ -219,7 +219,7 @@ namespace tlist_helpers
     }
 } // namespace tlist_helpers
 
-template<typename T>
+template<typename T, typename Allocator = std::allocator<T>>
 class AoS {
     static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
 public:
@@ -299,10 +299,10 @@ public:
 
         T aggregate_object() const noexcept { return *this; }
     };
-    std::vector<Iface> storage;
+    std::vector<Iface, Allocator> storage;
 };
 
-template<typename T>
+template<typename T, typename Allocator = std::allocator<T>>
 class SoA {
     static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
 public:
@@ -352,7 +352,7 @@ public:
             );
         }
     protected:
-        constexpr BaseIface(const SoA<T>* base, std::size_t index) : base(base), index(index) { }
+        constexpr BaseIface(const SoA<T, Allocator>* base, std::size_t index) : base(base), index(index) { }
         constexpr auto get_size()  const noexcept { return base->size; }
         constexpr auto get_index() const noexcept { return index; }
         constexpr const auto* get_base() const noexcept { return base; }
@@ -379,7 +379,7 @@ public:
     class ConstIface : public BaseIface
     {
     public:
-        ConstIface( const SoA<T>* b, std::size_t index) : BaseIface(b, index) { }
+        ConstIface( const SoA<T, Allocator>* b, std::size_t index) : BaseIface(b, index) { }
 
         template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
         const auto& get() const noexcept
@@ -398,7 +398,7 @@ public:
     class Iface : public BaseIface
     {
     public:
-        Iface( SoA<T>* b, std::size_t index) : BaseIface(b, index), mutable_base(b) { }
+        Iface( SoA<T, Allocator>* b, std::size_t index) : BaseIface(b, index), mutable_base(b) { }
 
         template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
         auto& get() const noexcept
@@ -425,8 +425,8 @@ public:
             move_object(std::move(rhs));
         }
     private:
-        friend class SoA<T>;
-        SoA<T>* mutable_base;
+        friend class SoA<T, Allocator>;
+        SoA<T, Allocator>* mutable_base;
 
         void copy_object(const T& rhs) const noexcept
         {
@@ -445,10 +445,10 @@ public:
     class const_iterator : public boost::iterator_facade<const_iterator, ConstIface const, std::random_access_iterator_tag, const ConstIface&>,
                            private ConstIface
     {
-        friend class SoA<T>;
+        friend class SoA<T, Allocator>;
         friend class boost::iterator_core_access;
 
-        const_iterator(const SoA<T>* base, std::size_t index) : ConstIface(base, index) { }
+        const_iterator(const SoA<T, Allocator>* base, std::size_t index) : ConstIface(base, index) { }
 
         const ConstIface& dereference() const noexcept { return *this; }
         bool equal(const const_iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }
@@ -461,10 +461,10 @@ public:
     class iterator : public boost::iterator_facade<iterator, Iface, std::random_access_iterator_tag, const Iface&>,
                      private Iface
     {
-        friend class SoA<T>;
+        friend class SoA<T, Allocator>;
         friend class boost::iterator_core_access;
 
-        iterator(SoA<T>* base, std::size_t index) : Iface(base, index) { }
+        iterator(SoA<T, Allocator>* base, std::size_t index) : Iface(base, index) { }
 
         const Iface& dereference() const noexcept { return *this; }
         bool equal(const iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }
@@ -482,7 +482,7 @@ public:
     auto end() noexcept { return iterator{ this, size}; }
 
 private:
-    std::vector<char> storage;
+    std::vector<char, Allocator> storage;
     std::size_t size;
 
     friend class Iface;

@@ -56,14 +56,16 @@ int find_in_soa(const char* data)
 Both AoS and SoA mimic well-known behavior of `std::vector`:
 
 * **Construction:** `AoS<Structure> storage(20), storage_init(20, Structure(42));`
-* **Resize:** `storage.resize(30, Structure(42)`
+* **Resize:** `storage.resize(30, Structure(42))`
 * **Assignment:** `storage[index] = construct_some_structure()`
 * **Random access iterators**
 
 However, access to elements is performed with magic operators:
 * **Element access:** `storage[index]->*(Structure::field)`
-* **Compile-time element access:** `storage[index].get<Structure::field>()` 
+* **Constexpr element access:** `storage[index].get<Structure::field>()` 
 * **Object extraction:** `Structure s = storage[index].aggregate_object()`
+
+The best and the most actual reference is provided by [unit tests](https://github.com/pavelkryukov/AoAoAoTT/blob/master/test/test.cpp).
 
 ## Known limitations
 
