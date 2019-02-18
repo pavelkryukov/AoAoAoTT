@@ -244,3 +244,18 @@ TEST_CONTAINER_CASE("iterator arrow operator")
     CHECK( storage.cbegin()->get<&A::val>() == 11 );
     CHECK( storage.begin()->get<&A::key>()  == 12 );
 }
+
+TEST_CONTAINER_CASE("bidirectional iterator")
+{
+    CONTAINER<A> storage(10, { 11, 12, 13});
+    size_t i = 0;
+    auto it = storage.cend();
+    do {
+        --it;
+        CHECK( *it->*(&A::val) == 11);
+        CHECK( *it->*(&A::key) == 12);
+        CHECK( *it->*(&A::dum) == 13);
+        ++i;
+    } while (it != storage.cbegin());
+    CHECK(i == 10);
+}

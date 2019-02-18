@@ -348,6 +348,7 @@ public:
         constexpr auto get_index() const noexcept { return index; }
         constexpr const auto* get_base() const noexcept { return base; }
         void inc_index() noexcept { ++index; }
+        void dec_index() noexcept { --index; }
 
         template<typename Class, typename Type> static Type get_pointer_type(Type Class::*);
 
@@ -439,6 +440,7 @@ public:
         bool operator!=(const iterator& rhs) const noexcept { return this->get_index() != rhs.get_index(); }
 
         const_iterator& operator++() noexcept { this->inc_index(); return *this; }
+        const_iterator& operator--() noexcept { this->dec_index(); return *this; }
 
         const ConstIface& operator*() const noexcept  { return *this; }
         const ConstIface* operator->() const noexcept  { return this; }
@@ -453,6 +455,7 @@ public:
         bool operator!=(const const_iterator& rhs) const noexcept { return this->get_index() != rhs.get_index(); }
 
         iterator& operator++() noexcept { this->inc_index(); return *this; }
+        iterator& operator--() noexcept { this->dec_index(); return *this; }
 
         const Iface& operator*() const noexcept  { return *this; }
         const Iface* operator->() const noexcept  { return this; }
