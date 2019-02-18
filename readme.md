@@ -9,6 +9,7 @@ AoAoAoTT provides [AoS and SoA](https://en.wikipedia.org/wiki/AOS_and_SOA) conta
 1. Input structures should not be specially prepared.
 2. Interfaces for AoS and SoA containers must match perfectly.
 3. AoS and SoA containers provide STL interfaces (iterators, begin/end, ranges etc.)
+4. Minimal dependencies: header-only Boost and C++17 STL
 
 ## Example
 
@@ -57,7 +58,7 @@ Both AoS and SoA mimic well-known behavior of `std::vector`:
 * **Construction:** `AoS<Structure> storage(20), storage_init(20, Structure(42));`
 * **Resize:** `storage.resize(30, Structure(42)`
 * **Assignment:** `storage[index] = construct_some_structure()`
-* **Forward iterators** _(Random access iterators are in progress)_.
+* **Random access iterators**
 
 However, access to elements is performed with magic operators:
 * **Element access:** `storage[index]->*(Structure::field)`
@@ -93,3 +94,7 @@ However, you can use `std::array` without problems:
    SoA<Example> storage(1);
    storage[0] = Example(); // Correct
 ```
+
+### SoA has no reverse iterators
+
+Their implementation is just not good enough at the moment.
