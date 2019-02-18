@@ -246,14 +246,14 @@ public:
     auto cend() const noexcept { return storage.cend(); }
     auto begin() noexcept { return storage.begin(); }
     auto end() noexcept { return storage.end(); }
-
+#if 0
     auto rbegin() const noexcept { return storage.crbegin(); }
     auto rend() const noexcept { return storage.crend(); }
     auto crbegin() const noexcept { return storage.crbegin(); }
     auto crend() const noexcept { return storage.crend(); }
     auto rbegin() noexcept { return storage.rbegin(); }
     auto rend() noexcept { return storage.rend(); }
-
+#endif
     class Iface : private T
     {
     public:

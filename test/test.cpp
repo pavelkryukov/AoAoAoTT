@@ -54,6 +54,26 @@ namespace ao_ao_ao_tt::loophole_ns
     static_assert(std::is_same_v<as_type_list<A>, type_list<int, int, int>>);
 }
 
+template<typename R>
+const char* bold_cast(const R& ref)
+{
+    return reinterpret_cast<const char*>(&ref);
+}
+
+TEST_CONTAINER_CASE("principal test")
+{
+    static_assert(sizeof(A) != sizeof(int));
+
+    CONTAINER<A> storage( 11);
+    ptrdiff_t distance = bold_cast(storage[10]->*(&A::key)) - bold_cast(storage[0]->*(&A::key));
+
+    // That is the only test dependent on container type
+    if constexpr (std::is_same_v<CONTAINER<A>, AoS<A>>)
+        CHECK( distance == 10 * sizeof(A) );
+    else
+        CHECK( distance == 10 * sizeof(int) );
+}
+
 TEST_CONTAINER_CASE("initialize and r/w")
 {
     CONTAINER<A> storage( 10);
@@ -269,7 +289,7 @@ TEST_CONTAINER_CASE("random access iterator")
     CHECK( storage.end() - it == 30 );
 }
 
-/*
+#if 0
 TEST_CONTAINER_CASE("reverse iterator")
 {
     CONTAINER<A> storage(10);
@@ -288,4 +308,4 @@ TEST_CONTAINER_CASE("reverse iterator")
         ++i;
     }
 }
-*/
+#endif
