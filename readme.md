@@ -2,55 +2,74 @@
 
 # AoAoAoTT
 
-AoAoAoTT provides [AoS and SoA](https://en.wikipedia.org/wiki/AOS_and_SOA) containers interchangeable between each other in terms of interfaces.
+AoAoAoTT provides AoS and SoA containers interchangeable between each other in terms of interfaces.
 
-## Basic principles
+## Motivation
 
-1. Input structures should not be specially prepared.
-2. Interfaces for AoS and SoA containers must match perfectly.
-3. AoS and SoA containers provide STL interfaces (iterators, begin/end, ranges etc.)
-4. Minimal dependencies: header-only Boost and C++17 STL
+[Array of Structures and Structure of Arrays](https://en.wikipedia.org/wiki/AOS_and_SOA) are two ways to arrange a sequence of records in memory.
+Whereas SoA is more friendly with SIMD instructions and data prefetching, AoS usually utilizes spatial and temporal locality of CPU caches.
+Therefore, choose of the most performing data representation can hardly be theoretically proven, and the meainingful results may be obtained only by a quantative measurement.
 
-## Example
+However, arrangement of the experiment is laborious, as most of the programming languages natively support only AoS structures, and SoA versions of algorithms has to be made from scratch.
 
-Assume you have a straightforward data structure:
+AoAoAoTT simplifies the process for C++.
+The basic idea is to keep the data structures as they were defined by programmer, and touch only containers and access to them.
+
+### Example
+
+Consider the following simple example of AoS:
 
 ```c++
-struct SomeDataStructure
-{
+struct SomeDataStructure {
     std::array<char, 256> key;
     int value;
     int previous_value;
     bool valid;
 };
-```
 
-Iterating an array of such structures is a pretty clear operation. The only change is the magical `obj->*(&Class::member)` operator used instead of a simple `obj.member` syntax.
-```c++
-int find_in_aos(const char* data)
-{
-    // get a reference to some array of 200 structures;
-    const AoS<SomeDataStructure>& vector = get_vector();
-    for (size_t i = 0; i < 200; ++i)
-        if (strncmp(data, (vector[i]->*(&SomeDataStructure::key)).data(), 256) == 0)
+std::vector<SomeDataStructure> storage;
+
+int find_value(int value_to_find) {
+    for (const auto& e : storage)
+        if (e.value == value)
             return i;
     return -1;
 }
 ```
 
-However, code for structure of array looks exactly the same, wherease we are iterating the consequent block of memory now!
-```c++
-int find_in_soa(const char* data)
-{
-    // get a reference to some sturcture of 200 arrays
-    const SoA<SomeDataStructure>& vector = get_vector();
-    for (size_t i = 0; i < 200; ++i)
-        if (strncmp(data, (vector[i]->*(&SomeDataStructure::key)).data(), 256) == 0)
+Now you want to check whether SoA has more performable performance.
+With AoAoAoTT, you have to do two simple steps: replace `std::vector` by `ao_ao_ao_tt::SoA` and access members with the magical `->*` operator instead of common `.`.
+
+```diff
+-ao_ao_ao_tt::SoA<SomeDataStructure> storage;
++std::vector<SomeDataStructure> storage;
+ 
+ int find_value(int value_to_find) {
+     for (const auto& e : storage)
+-        if (e.value == value)
++        if (e->*(&SomeDataStructure::value) == value)
             return i;
     return -1;
 }
 ```
 
+Imagine that for some reason SoA did not perform well and you want to compare it to AoS more accurate.
+That would be very simple: you have just to substitute `SoA` container by fully interface-compatible `AoS`.
+
+```diff
+-ao_ao_ao_tt::SoA<SomeDataStructure> storage;
++ao_ao_ao_tt::AoS<SomeDataStructure> storage;
+```
+
+With some macro or SFINAE you would be able to change the arrangement very easily.
+
+To sum up, let's enumerate **the basic principles** of AoAoAoTT design:
+1. Input structures should not be specially prepared.
+2. Interfaces for AoS and SoA containers must match perfectly.
+3. AoS and SoA containers provide STL interfaces (iterators, begin/end, ranges etc.)
+4. Minimal dependencies: header-only Boost and C++17 STL
+
+----
 ## Supported interfaces
 
 Both AoS and SoA mimic well-known behavior of `std::vector`:
@@ -67,6 +86,7 @@ However, access to elements is performed with magic operators:
 
 The best and the most actual reference is provided by [unit tests](https://github.com/pavelkryukov/AoAoAoTT/blob/master/test/test.cpp).
 
+----
 ## Known limitations
 
 ### Only [trivially copyable](https://en.cppreference.com/w/cpp/named_req/TriviallyCopyable) types are supported
@@ -101,7 +121,7 @@ However, you can use `std::array` without problems:
 
 Their implementation is just not good enough at the moment.
 
-
+----
 ## Thanks
 
 * [Paolo Crosetto](https://github.com/crosetto) for his inspiring [SoAvsAoS implementation](https://github.com/crosetto/SoAvsAoS)
