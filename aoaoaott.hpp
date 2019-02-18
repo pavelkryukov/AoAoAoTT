@@ -23,7 +23,7 @@
 #ifndef AO_AO_AO_TT
 #define AO_AO_AO_TT
 
-#include <memory>
+#include <boost/iterator/iterator_facade.hpp>
 #include <vector>
 
 namespace ao_ao_ao_tt {
@@ -349,6 +349,7 @@ public:
         constexpr const auto* get_base() const noexcept { return base; }
         void inc_index() noexcept { ++index; }
         void dec_index() noexcept { --index; }
+        void advance_index(size_t n) noexcept { index += n; }
 
         template<typename Class, typename Type> static Type get_pointer_type(Type Class::*);
 
@@ -431,34 +432,37 @@ public:
     };
 
     class iterator;
-    class const_iterator : private ConstIface
+
+    class const_iterator : public boost::iterator_facade<const_iterator, ConstIface const, std::random_access_iterator_tag, const ConstIface&>,
+                           private ConstIface
     {
-    public:
+        friend class SoA<T>;
+        friend class boost::iterator_core_access;
+
         const_iterator(const SoA<T>* base, std::size_t index) : ConstIface(base, index) { }
 
-        bool operator!=(const const_iterator& rhs) const noexcept { return this->get_index() != rhs.get_index(); }
-        bool operator!=(const iterator& rhs) const noexcept { return this->get_index() != rhs.get_index(); }
-
-        const_iterator& operator++() noexcept { this->inc_index(); return *this; }
-        const_iterator& operator--() noexcept { this->dec_index(); return *this; }
-
-        const ConstIface& operator*() const noexcept  { return *this; }
-        const ConstIface* operator->() const noexcept  { return this; }
+        const ConstIface& dereference() const noexcept { return *this; }
+        bool equal(const const_iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }
+        void increment() noexcept { this->inc_index(); }
+        void decrement() noexcept { this->dec_index(); }
+        void advance(size_t n) noexcept { this->advance_index( n); }
+        ptrdiff_t distance_to(const const_iterator& rhs) noexcept { return this->get_index() - rhs.get_index(); }
     };
     
-    class iterator : private Iface
+    class iterator : public boost::iterator_facade<iterator, Iface, std::random_access_iterator_tag, const Iface&>,
+                     private Iface
     {
-    public:
+        friend class SoA<T>;
+        friend class boost::iterator_core_access;
+
         iterator(SoA<T>* base, std::size_t index) : Iface(base, index) { }
 
-        bool operator!=(const iterator& rhs) const noexcept { return this->get_index() != rhs.get_index(); }
-        bool operator!=(const const_iterator& rhs) const noexcept { return this->get_index() != rhs.get_index(); }
-
-        iterator& operator++() noexcept { this->inc_index(); return *this; }
-        iterator& operator--() noexcept { this->dec_index(); return *this; }
-
-        const Iface& operator*() const noexcept  { return *this; }
-        const Iface* operator->() const noexcept  { return this; }
+        const Iface& dereference() const noexcept { return *this; }
+        bool equal(const iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }
+        void increment() noexcept { this->inc_index(); }
+        void decrement() noexcept { this->dec_index(); }
+        void advance(size_t n) noexcept { this->advance_index( n); }
+        ptrdiff_t distance_to(const iterator& rhs) noexcept { return this->get_index() - rhs.get_index(); }
     };
 
     const_iterator cbegin() const noexcept { return const_iterator{ this, 0}; }
