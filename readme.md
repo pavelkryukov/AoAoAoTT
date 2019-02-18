@@ -6,7 +6,7 @@ AoAoAoTT provides AoS and SoA containers interchangeable between each other in t
 
 ## Motivation
 
-[Array of Structures and Structure of Arrays](https://en.wikipedia.org/wiki/AOS_and_SOA) are two ways to arrange a sequence of records in memory.
+[Array of Structures and Structure of Arrays](https://en.wikipedia.org/wiki/AOS_and_SOA) are two ways to arrange a sequence of records in computer memory.
 Whereas SoA is more friendly with SIMD instructions and data prefetching, AoS usually utilizes spatial and temporal locality of CPU caches.
 Therefore, choose of the most performing data representation can hardly be theoretically proven, and the meainingful results may be obtained only by a quantative measurement.
 
@@ -37,7 +37,7 @@ int find_value(int value_to_find) {
 }
 ```
 
-Now you want to check whether SoA has more performable performance.
+Now you want to check whether SoA performs better.
 With AoAoAoTT, you have to do two simple steps: replace `std::vector` by `ao_ao_ao_tt::SoA` and access members with the magical `->*` operator instead of common `.`.
 
 ```diff
@@ -53,21 +53,21 @@ With AoAoAoTT, you have to do two simple steps: replace `std::vector` by `ao_ao_
 }
 ```
 
-Imagine that for some reason SoA did not perform well and you want to compare it to AoS more accurate.
-That would be very simple: you have just to substitute `SoA` container by fully interface-compatible `AoS`.
+Imagine that for some reason SoA did not perform well and you want to rollback to AoS to make more accurate measurements.
+That would be very simple: just substitute `SoA` container by fully interface-compatible `AoS`.
 
 ```diff
 -ao_ao_ao_tt::SoA<SomeDataStructure> storage;
 +ao_ao_ao_tt::AoS<SomeDataStructure> storage;
 ```
 
-With some macro or SFINAE you would be able to change the arrangement very easily.
+With some macro or SFINAE helpers you would be able to change the arrangement easily, e.g. from the command line.
 
 To sum up, let's enumerate **the basic principles** of AoAoAoTT design:
 1. Input structures should not be specially prepared.
-2. Interfaces for AoS and SoA containers must match perfectly.
-3. AoS and SoA containers provide STL interfaces (iterators, begin/end, ranges etc.)
-4. Minimal dependencies: header-only Boost and C++17 STL
+2. Interfaces for AoS and SoA containers are perfectly matched.
+3. AoS and SoA containers provide STL-like interfaces (iterators, begin/end, ranges etc.)
+4. Minimal dependencies: header-only Boost and C++17 STL.
 
 ----
 ## Supported interfaces
