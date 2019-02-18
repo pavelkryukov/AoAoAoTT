@@ -122,6 +122,12 @@ However, you can use `std::array` without problems:
 Their implementation is just not good enough at the moment.
 
 ----
+## Further reading
+
+* _**[Nomad Game Engine: Part 4.3 — AoS vs SoA](https://medium.com/@savas/nomad-game-engine-part-4-3-aos-vs-soa-storage-5bec879aa38c)** by Niko Savas_ — nice demonstration of SoA advantages.
+* _**[Example of AoS outperforming SoA](https://stackoverflow.com/questions/17924705/structure-of-arrays-vs-array-of-structures-in-cuda/17924782#17924782)** by Paul R_
+
+----
 ## Thanks
 
 * [Paolo Crosetto](https://github.com/crosetto) for his inspiring [SoAvsAoS implementation](https://github.com/crosetto/SoAvsAoS)
