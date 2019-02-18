@@ -105,5 +105,5 @@ Their implementation is just not good enough at the moment.
 ## Thanks
 
 * [Paolo Crosetto](https://github.com/crosetto) for his inspiring [SoAvsAoS implementation](https://github.com/crosetto/SoAvsAoS)
-* [Alexandr Poltavsky](https://github.com/alexpolt) for public domain implementation of Loophole
+* [Alexandr Poltavsky](https://github.com/alexpolt) for public domain [implementation of Loophole](https://github.com/alexpolt/luple)
 * [Alexandr Titov](https://github.com/alexander-titov) for assistance with benchmarking
