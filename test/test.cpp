@@ -218,7 +218,7 @@ TEST_CONTAINER_CASE("const iterator")
         CHECK( entry->*(&A::val) == 11);
         CHECK( entry->*(&A::key) == 12);
         CHECK( entry->*(&A::dum) == 13);
-        ++i
+        ++i;
     }
     CHECK(i == 10);
 }
