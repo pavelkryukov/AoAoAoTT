@@ -54,15 +54,15 @@ int find_in_soa(const char* data)
 
 Both AoS and SoA mimic well-known behavior of `std::vector`:
 
-* Construction: `AoS<Structure> storage(20), storage_init(20, Structure(42));`
-* Resize: `storage.resize(30, Structure(42)`
-* Assignment: `storage[index] = construct_some_structure()`
-* Forward iterators (Random access iterators are in progress).
+* **Construction:** `AoS<Structure> storage(20), storage_init(20, Structure(42));`
+* **Resize:** `storage.resize(30, Structure(42)`
+* **Assignment:** `storage[index] = construct_some_structure()`
+* **Forward iterators** _(Random access iterators are in progress)_.
 
 However, access to elements is performed with magic operators:
-* Element access: `storage[index]->*(Structure::field)`
-* Compile-time element access: `storage[index].get<Structure::field>()` 
-* Object extraction: `Structure s = storage[index].aggregate_object()`
+* **Element access:** `storage[index]->*(Structure::field)`
+* **Compile-time element access:** `storage[index].get<Structure::field>()` 
+* **Object extraction:** `Structure s = storage[index].aggregate_object()`
 
 ## Known limitations
 
@@ -75,7 +75,8 @@ That has a reason: how would you _adjust_ copy methods, move methods, or destruc
 You cannot assign a structure with C-style array to SoA container:
 
 ```c++
-   struct Example {
+   struct Example
+   {
        char array[128];
    };
    SoA<Example> storage(1);
@@ -85,7 +86,8 @@ You cannot assign a structure with C-style array to SoA container:
 However, you can use `std::array` without problems:
 
 ```c++
-   struct Example {
+   struct Example
+   {
        std::array<char, 128> array;
    };
    SoA<Example> storage(1);
