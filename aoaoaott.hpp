@@ -446,7 +446,7 @@ public:
         void increment() noexcept { this->inc_index(); }
         void decrement() noexcept { this->dec_index(); }
         void advance(size_t n) noexcept { this->advance_index( n); }
-        ptrdiff_t distance_to(const const_iterator& rhs) noexcept { return this->get_index() - rhs.get_index(); }
+        ptrdiff_t distance_to(const const_iterator& rhs) const noexcept { return rhs.get_index() - this->get_index(); }
     };
     
     class iterator : public boost::iterator_facade<iterator, Iface, std::random_access_iterator_tag, const Iface&>,
@@ -462,7 +462,7 @@ public:
         void increment() noexcept { this->inc_index(); }
         void decrement() noexcept { this->dec_index(); }
         void advance(size_t n) noexcept { this->advance_index( n); }
-        ptrdiff_t distance_to(const iterator& rhs) noexcept { return this->get_index() - rhs.get_index(); }
+        ptrdiff_t distance_to(const iterator& rhs) const noexcept { return rhs.get_index() - this->get_index(); }
     };
 
     const_iterator cbegin() const noexcept { return const_iterator{ this, 0}; }

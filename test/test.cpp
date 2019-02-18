@@ -259,3 +259,12 @@ TEST_CONTAINER_CASE("bidirectional iterator")
     } while (it != storage.cbegin());
     CHECK(i == 10);
 }
+
+TEST_CONTAINER_CASE("random access iterator")
+{
+    CONTAINER<A> storage(90);
+    CHECK( storage.end() - storage.begin() == 90 );
+    CHECK( storage.begin() <= storage.end() );
+    auto it = std::next(storage.begin(), 60);
+    CHECK( storage.end() - it == 30 );
+}
