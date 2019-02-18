@@ -37,21 +37,8 @@ using namespace ao_ao_ao_tt;
 
 TEST_CONTAINER_CASE("Empty structures")
 {
-    using namespace ao_ao_ao_tt::loophole_ns;
     struct EmptyStruct {};
-    static_assert(std::is_same_v<as_type_list<EmptyStruct>, type_list<>>);
     CONTAINER<EmptyStruct>();
-}
-
-struct A {
-    int val;
-    int key;
-    int dum;
-};
-
-namespace ao_ao_ao_tt::loophole_ns
-{
-    static_assert(std::is_same_v<as_type_list<A>, type_list<int, int, int>>);
 }
 
 template<typename R>
@@ -62,17 +49,29 @@ const char* bold_cast(const R& ref)
 
 TEST_CONTAINER_CASE("principal test")
 {
-    static_assert(sizeof(A) != sizeof(int));
+    struct Structure
+    {
+        int val;
+        int key;
+        int dum;
+    };
+    static_assert(sizeof(Structure) != sizeof(int));
 
-    CONTAINER<A> storage( 11);
-    ptrdiff_t distance = bold_cast(storage[10]->*(&A::key)) - bold_cast(storage[0]->*(&A::key));
+    CONTAINER<Structure> storage( 11);
+    ptrdiff_t distance = bold_cast(storage[10]->*(&Structure::key)) - bold_cast(storage[0]->*(&Structure::key));
 
     // That is the only test dependent on container type
-    if constexpr (std::is_same_v<CONTAINER<A>, AoS<A>>)
-        CHECK( distance == 10 * sizeof(A) );
-    else
+    if constexpr (std::is_same_v<CONTAINER<Structure>, AoS<Structure>>)
+        CHECK( distance == 10 * sizeof(Structure) );
+    else    
         CHECK( distance == 10 * sizeof(int) );
 }
+
+struct A {
+    int val;
+    int key;
+    int dum;
+};
 
 TEST_CONTAINER_CASE("initialize and r/w")
 {
