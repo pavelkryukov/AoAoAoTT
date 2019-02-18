@@ -435,12 +435,13 @@ public:
     public:
         const_iterator(const SoA<T>* base, std::size_t index) : ConstIface(base, index) { }
 
-        bool operator!=(const const_iterator& rhs) { return this->get_index() != rhs.get_index(); }
-        bool operator!=(const iterator& rhs) { return this->get_index() != rhs.get_index(); }
+        bool operator!=(const const_iterator& rhs) const noexcept { return this->get_index() != rhs.get_index(); }
+        bool operator!=(const iterator& rhs) const noexcept { return this->get_index() != rhs.get_index(); }
 
-        const_iterator& operator++() { this->inc_index(); return *this; }
+        const_iterator& operator++() noexcept { this->inc_index(); return *this; }
 
-        ConstIface& operator*() { return *this; }
+        const ConstIface& operator*() const noexcept  { return *this; }
+        const ConstIface* operator->() const noexcept  { return this; }
     };
     
     class iterator : private Iface
@@ -448,12 +449,13 @@ public:
     public:
         iterator(SoA<T>* base, std::size_t index) : Iface(base, index) { }
 
-        bool operator!=(const iterator& rhs) { return this->get_index() != rhs.get_index(); }
-        bool operator!=(const const_iterator& rhs) { return this->get_index() != rhs.get_index(); }
+        bool operator!=(const iterator& rhs) const noexcept { return this->get_index() != rhs.get_index(); }
+        bool operator!=(const const_iterator& rhs) const noexcept { return this->get_index() != rhs.get_index(); }
 
-        iterator& operator++() { this->inc_index(); return *this; }
+        iterator& operator++() noexcept { this->inc_index(); return *this; }
 
-        Iface& operator*() { return *this; }
+        const Iface& operator*() const noexcept  { return *this; }
+        const Iface* operator->() const noexcept  { return this; }
     };
 
     const_iterator cbegin() const noexcept { return const_iterator{ this, 0}; }

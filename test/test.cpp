@@ -238,3 +238,9 @@ TEST_CONTAINER_CASE("mutable iterator")
     }
 }
 
+TEST_CONTAINER_CASE("iterator arrow operator")
+{
+    CONTAINER<A> storage(10, { 11, 12, 13});
+    CHECK( storage.cbegin()->get<&A::val>() == 11 );
+    CHECK( storage.begin()->get<&A::key>()  == 12 );
+}
