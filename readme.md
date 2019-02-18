@@ -2,7 +2,7 @@
 
 # AoAoAoTT
 
-AoAoAoTT is a framework to easily switch between AoS and SoA data structures.
+AoAoAoTT provides [AoS and SoA](https://en.wikipedia.org/wiki/AOS_and_SOA) containers interchangeable between each other in terms of interfaces.
 
 ## Basic principles
 
@@ -12,12 +12,12 @@ AoAoAoTT is a framework to easily switch between AoS and SoA data structures.
 
 ## Example
 
-Assume you have some straightforward data structure:
+Assume you have a straightforward data structure:
 
 ```c++
 struct SomeDataStructure
 {
-    char key[256];
+    std::array<char, 256> key;
     int value;
     int previous_value;
     bool valid;
@@ -31,7 +31,7 @@ int find_in_aos(const char* data)
     // get a reference to some array of 200 structures;
     const AoS<SomeDataStructure>& vector = get_vector();
     for (size_t i = 0; i < 200; ++i)
-        if (strncmp(data, vector[i]->*(&SomeDataStructure::key), 256))
+        if (strncmp(data, (vector[i]->*(&SomeDataStructure::key)).data(), 256) == 0)
             return i;
     return -1;
 }
@@ -44,11 +44,25 @@ int find_in_soa(const char* data)
     // get a reference to some sturcture of 200 arrays
     const SoA<SomeDataStructure>& vector = get_vector();
     for (size_t i = 0; i < 200; ++i)
-        if (strncmp(data, vector[i]->*(&SomeDataStructure::key), 256))
+        if (strncmp(data, (vector[i]->*(&SomeDataStructure::key)).data(), 256) == 0)
             return i;
     return -1;
 }
 ```
+
+## Supported interfaces
+
+Both AoS and SoA mimic well-known behavior of `std::vector`:
+
+* Construction: `AoS<Structure> storage(20), storage_init(20, Structure(42));`
+* Resize: `storage.resize(30, Structure(42)`
+* Assignment: `storage[index] = construct_some_structure()`
+* Forward iterators (Random access iterators are in progress).
+
+However, access to elements is performed with magic operators:
+* Element access: `storage[index]->*(Structure::field)`
+* Compile-time element access: `storage[index].get<Structure::field>()` 
+* Object extraction: `Structure s = storage[index].aggregate_object()`
 
 ## Known limitations
 
