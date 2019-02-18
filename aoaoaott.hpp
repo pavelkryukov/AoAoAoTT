@@ -237,13 +237,22 @@ public:
 
     using iterator = typename std::vector<Iface>::iterator;
     using const_iterator = typename std::vector<Iface>::const_iterator;
+    using reverse_iterator = typename std::vector<Iface>::reverse_iterator;
+    using const_reverse_iterator = typename std::vector<Iface>::const_reverse_iterator;
 
-    const_iterator begin() const noexcept { return storage.cbegin(); }
-    const_iterator end() const noexcept { return storage.cend(); }
-    const_iterator cbegin() const noexcept { return storage.cbegin(); }
-    const_iterator cend() const noexcept { return storage.cend(); }
-    iterator begin() noexcept { return storage.begin(); }
-    iterator end() noexcept { return storage.end(); }
+    auto begin() const noexcept { return storage.cbegin(); }
+    auto end() const noexcept { return storage.cend(); }
+    auto cbegin() const noexcept { return storage.cbegin(); }
+    auto cend() const noexcept { return storage.cend(); }
+    auto begin() noexcept { return storage.begin(); }
+    auto end() noexcept { return storage.end(); }
+
+    auto rbegin() const noexcept { return storage.crbegin(); }
+    auto rend() const noexcept { return storage.crend(); }
+    auto crbegin() const noexcept { return storage.crbegin(); }
+    auto crend() const noexcept { return storage.crend(); }
+    auto rbegin() noexcept { return storage.rbegin(); }
+    auto rend() noexcept { return storage.rend(); }
 
     class Iface : private T
     {
@@ -465,12 +474,22 @@ public:
         ptrdiff_t distance_to(const iterator& rhs) const noexcept { return rhs.get_index() - this->get_index(); }
     };
 
-    const_iterator cbegin() const noexcept { return const_iterator{ this, 0}; }
-    const_iterator cend() const noexcept { return const_iterator{ this, size}; }
-    const_iterator begin() const noexcept { return cbegin(); }
-    const_iterator end() const noexcept { return cend(); }
-    iterator begin() noexcept { return iterator{ this, 0}; }
-    iterator end() noexcept { return iterator{ this, size}; }
+    using reverse_iterator = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+    auto cbegin() const noexcept { return const_iterator{ this, 0}; }
+    auto cend() const noexcept { return const_iterator{ this, size}; }
+    auto begin() const noexcept { return cbegin(); }
+    auto end() const noexcept { return cend(); }
+    auto begin() noexcept { return iterator{ this, 0}; }
+    auto end() noexcept { return iterator{ this, size}; }
+
+    auto crbegin() const noexcept { return const_reverse_iterator(std::next(cend())); }
+    auto crend() const noexcept { return const_reverse_iterator(std::next(cbegin())); }
+    auto rbegin() const noexcept { return const_reverse_iterator(std::next(cend())); }
+    auto rend() const noexcept { return const_reverse_iterator(std::next(cbegin())); }
+    auto rbegin() noexcept { return reverse_iterator(std::next(end())); }
+    auto rend() noexcept { return reverse_iterator(std::next(begin())); }
 private:
     std::vector<char> storage;
     std::size_t size;

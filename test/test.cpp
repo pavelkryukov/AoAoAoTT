@@ -268,3 +268,24 @@ TEST_CONTAINER_CASE("random access iterator")
     auto it = std::next(storage.begin(), 60);
     CHECK( storage.end() - it == 30 );
 }
+
+/*
+TEST_CONTAINER_CASE("reverse iterator")
+{
+    CONTAINER<A> storage(10);
+    int value = 20;
+    for (auto& entry : storage) {
+        entry->*(&A::val) = ++value;
+        entry->*(&A::key) = ++value;
+        entry->*(&A::dum) = ++value;
+    }
+    size_t i = 0;
+    CHECK( &(*std::make_reverse_iterator(storage.end())) == &*(storage.end() - 1) );
+    for (auto it = storage.crbegin(); it != storage.crend(); ++it) {
+        CHECK( it->get<&A::val>() == value - 3 * i - 2 );
+        CHECK( it->get<&A::key>() == value - 3 * i - 1 );
+        CHECK( it->get<&A::dum>() == value - 3 * i );
+        ++i;
+    }
+}
+*/
