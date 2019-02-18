@@ -11,6 +11,7 @@ addons:
     sources:
     - ubuntu-toolchain-r-test
     packages:
+    - libboost-dev
     - libstdc++-7-dev
     - g++-7
 
