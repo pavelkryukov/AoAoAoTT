@@ -334,3 +334,8 @@ TEST_CONTAINER_CASE("const method and mutable field")
     CHECK( storage[3]->*(&HasMutable::x) == 110 );
 }
 
+TEST_CONTAINER_CASE("arrow-star method")
+{
+    CONTAINER<HasMethod> storage( 10, HasMethod{33, 44});
+    CHECK( (storage[3]->*(&HasMethod::drink_cologne))(1) == 80);
+}

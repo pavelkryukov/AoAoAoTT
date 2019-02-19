@@ -84,10 +84,11 @@ Both AoS and SoA mimic well-known behavior of `std::vector`:
 * **Random access iterators**
 
 However, access to elements is performed with magic operators:
-* **Element access:** `storage[index]->*(&Structure::field)`
-* **Constexpr element access:** `storage[index].get<&Structure::field>()` 
+* **Constexpr element access:** `storage[index].get<&Structure::field>()`
+* **Elegant element access:** `storage[index]->*(&Structure::field)`
 * **Object aggregation:** `Structure s = storage[index].aggregate()`
 * **Aggregate and call a method:** `storage[index].method<&Structure::update>(param1, param2)`
+* **Elegant lambda call:** `(storage[index]->(&Structure::update))(param1, param2)`
 
 The best and the most actual reference is provided by [unit tests](https://github.com/pavelkryukov/AoAoAoTT/blob/master/test/test.cpp).
 

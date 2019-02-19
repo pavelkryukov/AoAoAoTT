@@ -312,6 +312,22 @@ public:
             static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
             return (this->*ptr)(std::forward<Args>(args)...);
         }
+
+        template<typename R, typename ... Args>
+        auto operator->*(R (T::* fun)(Args ...)) const noexcept
+        {
+            return [this, fun](Args&& ... args){
+                return (this->*fun)(std::forward<Args>(args)...);
+            };
+        }
+
+        template<typename R, typename ... Args>
+        auto operator->*(R (T::* fun)(Args ...) const) const noexcept
+        {
+            return [this, fun](Args&& ... args){
+                return (this->*fun)(std::forward<Args>(args)...);
+            };
+        }
     };
     std::vector<Iface, Allocator> storage;
 };
@@ -358,18 +374,39 @@ public:
         auto method(Args&& ... args) const // noexcept?
         {
             static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
-            struct object_mover
-            {
-                const BaseIface* const iface;
-                T object;
-                explicit object_mover(const BaseIface* iface) : iface(iface), object(iface->aggregate()) { }
-                ~object_mover() { iface->get_base()->move_object_mutable(std::move(object), iface->get_index()); }
-            } object_mover(this);
-            return (object_mover.object.*ptr)(std::forward<Args>(args)...);
+            object_mover om(this);
+            return (om.object.*ptr)(std::forward<Args>(args)...);
         }
+
+        template<typename R, typename ... Args>
+        auto operator->*(R (T::* fun)(Args ...)) const noexcept
+        {
+            return [this, fun](Args&& ... args) {
+                object_mover om(this);
+                return (om.object.*fun)(std::forward<Args>(args)...);
+            };
+        }
+
+        template<typename R, typename ... Args>
+        auto operator->*(R (T::* fun)(Args ...) const) const noexcept
+        {
+            return [this, fun](Args&& ... args) {
+                object_mover om(this);
+                return (om.object.*fun)(std::forward<Args>(args)...);
+            };
+        }
+
     private:
         const SoA<T>* base;
         size_t index;
+        struct object_mover
+        {
+            const BaseIface* const iface;
+            T object;
+            explicit object_mover(const BaseIface* iface) : iface(iface), object(iface->aggregate()) { }
+            ~object_mover() { iface->get_base()->move_object_mutable(std::move(object), iface->get_index()); }
+        };
+
         template<typename R>
         static constexpr auto member_offset(R T::* member) noexcept
         {
@@ -407,6 +444,8 @@ public:
     public:
         ConstIface( const SoA<T, Allocator>* b, std::size_t index) : BaseIface(b, index) { }
 
+        using BaseIface::operator->*;
+
         template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
         const auto& get() const noexcept
         {
@@ -432,6 +471,8 @@ public:
             using Type = decltype(this->get_pointer_type(ptr));
             return *reinterpret_cast<Type*>(mutable_base->storage.data() + this->template get_offset_template<ptr>());
         }
+
+        using BaseIface::operator->*;
 
         template<typename R>
         R& operator->*(R T::* field) const noexcept
@@ -473,7 +514,7 @@ public:
         void advance(size_t n) noexcept { this->advance_index( n); }
         ptrdiff_t distance_to(const const_iterator& rhs) const noexcept { return rhs.get_index() - this->get_index(); }
     };
-    
+
     class iterator : public boost::iterator_facade<iterator, Iface, std::random_access_iterator_tag, const Iface&>,
                      private Iface
     {
