@@ -329,13 +329,13 @@ public:
     void resize(std::size_t size) { storage.resize(size); }
     void resize(std::size_t size, const T& value) { storage.resize(size, AoSFacade(value)); }
 
-    Iface& operator[](std::size_t index) noexcept { return storage[index]; }
-    const Iface& operator[](std::size_t index) const noexcept { return storage[index]; }
+    auto& operator[](std::size_t index) noexcept { return storage[index]; }
+    const auto& operator[](std::size_t index) const noexcept { return storage[index]; }
 
-    using iterator = typename std::vector<AoSFacade>::iterator;
-    using const_iterator = typename std::vector<AoSFacade>::const_iterator;
-    using reverse_iterator = typename std::vector<AoSFacade>::reverse_iterator;
-    using const_reverse_iterator = typename std::vector<AoSFacade>::const_reverse_iterator;
+    using iterator = typename std::vector<AoSFacade<T>>::iterator;
+    using const_iterator = typename std::vector<AoSFacade<T>>::const_iterator;
+    using reverse_iterator = typename std::vector<AoSFacade<T>>::reverse_iterator;
+    using const_reverse_iterator = typename std::vector<AoSFacade<T>>::const_reverse_iterator;
 
     auto begin() const noexcept { return storage.cbegin(); }
     auto end() const noexcept { return storage.cend(); }
@@ -351,7 +351,7 @@ public:
     auto rbegin() noexcept { return storage.rbegin(); }
     auto rend() noexcept { return storage.rend(); }
 private:
-    std::vector<AoSFacade, Allocator> storage;
+    std::vector<AoSFacade<T>, Allocator> storage;
 };
 
 template<typename T, typename Allocator = std::allocator<T>>
