@@ -114,12 +114,10 @@ Probably, that has to be wrapped to a method.
 You cannot assign a structure with C-style array to SoA container:
 
 ```c++
-   struct Example
-   {
-
+   struct Example {
+       char array[128];
    };
-   SoA<Example> storage(1);
-   storage[0] = Example(); // Does not work;
+   SoA<Example> storage(1, Example()); // Does not work;
 ```
 
 However, you can use `std::array` without any problems:
