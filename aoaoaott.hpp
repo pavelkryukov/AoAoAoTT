@@ -301,7 +301,7 @@ namespace copy_helpers
         }
  
         template<typename R, typename ... Args>
-        auto operator->*(R (T::* fun)(Args ...) const) const noexcept
+        auto operator->*(R (T::* fun)(Args ...)) noexcept
         {
             return [this, fun](Args&& ... args){
                 return (this->*fun)(std::forward<Args>(args)...);
@@ -309,7 +309,7 @@ namespace copy_helpers
         }
 
         template<typename R, typename ... Args>
-        auto operator->*(R (T::* fun)(Args ...)) const noexcept
+        auto operator->*(R (T::* fun)(Args ...) const) const noexcept
         {
             return [this, fun](Args&& ... args){
                 return (this->*fun)(std::forward<Args>(args)...);
