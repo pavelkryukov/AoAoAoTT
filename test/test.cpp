@@ -207,17 +207,24 @@ TEST_CONTAINER_CASE("allow substructure")
     CHECK( storage[5]->*(&WithA::dum) == 12 );
 }
 
+struct HasMethod
+{
+    int alain;
+    int delon;
+
+    int drink_cologne(int cologne) const
+    {
+        return alain + delon + 3 * cologne;
+    }
+
+    void drink_double_bourbon()
+    {
+        std::swap(alain, delon);
+    }
+};
+
 TEST_CONTAINER_CASE("aggregate and run method")
 {
-    struct HasMethod
-    {
-        int alain;
-        int delon;
-        void drink_double_bourbon()
-        {
-            std::swap(alain, delon);
-        }
-    };
     CONTAINER<HasMethod> storage( 10);
     storage[4] = HasMethod{33, 44};
     auto val = storage[4].aggregate();
@@ -308,3 +315,28 @@ TEST_CONTAINER_CASE("reverse iterator")
     }
 }
 #endif
+
+TEST_CONTAINER_CASE("immutable method")
+{
+    CONTAINER<HasMethod> storage( 10, HasMethod{33, 44});
+    CHECK( storage[3].immutable_method<&HasMethod::drink_cologne>(1) == 80);
+}
+
+TEST_CONTAINER_CASE("const method")
+{
+    CONTAINER<HasMethod> storage( 10, HasMethod{33, 44});
+    CHECK( storage[3].method<&HasMethod::drink_cologne>(1) == 80);
+}
+
+TEST_CONTAINER_CASE("const method and mutable field")
+{
+    struct HasMutable {
+        mutable int x;
+        void update_x() const { ++x; }
+    };
+
+    /* const */ CONTAINER<HasMutable> storage( 10, HasMutable{109});
+    storage[3].method<&HasMutable::update_x>();
+    CHECK( storage[3]->*(&HasMutable::x) == 110 );
+}
+

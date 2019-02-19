@@ -298,6 +298,27 @@ public:
         }
 
         T aggregate() const noexcept { return *this; }
+
+        template<auto ptr, typename ... Args>
+        auto method(Args ... args) // noexcept?
+        {
+            static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
+            return (this->*ptr)(args...);
+        }
+
+        template<auto ptr, typename ... Args>
+        auto method(Args ... args) const // noexcept?
+        {
+            static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
+            return (this->*ptr)(args...);
+        }
+
+        template<auto ptr, typename ... Args>
+        auto immutable_method(Args ... args) const // noexcept?
+        {
+            static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
+            return (this->*ptr)(args...);
+        }
     };
     std::vector<Iface, Allocator> storage;
 };
@@ -340,6 +361,12 @@ public:
             T result{};
             tlist_helpers::copy_all_members_from_storage(base->storage.data(), &result, this->get_index(), this->get_size());
             return result;
+        }
+       
+        template<auto ptr, typename ... Args>
+        auto immutable_method(Args ... args) const // noexcept?
+        {
+            return (this->aggregate().*ptr)(args...);
         }
     private:
         const SoA<T>* base;
@@ -423,6 +450,20 @@ public:
         {
             static_assert(std::is_move_assignable_v<T>, "Object cannot be assigned because its move assignment operator is implicitly deleted");
             move_object(std::move(rhs));
+        }
+
+        template<auto ptr, typename ... Args>
+        auto method(Args ... args) const // noexcept?
+        {
+            static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
+            struct object_mover
+            {
+                const Iface* const iface;
+                T object;
+                explicit object_mover(const Iface* iface) : iface(iface), object(iface->aggregate()) { }
+                ~object_mover() { iface->move_object(std::move(object)); }
+            } object_mover(this);
+            return (object_mover.object.*ptr)(args...);
         }
     private:
         friend class SoA<T, Allocator>;

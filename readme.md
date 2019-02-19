@@ -84,9 +84,10 @@ Both AoS and SoA mimic well-known behavior of `std::vector`:
 * **Random access iterators**
 
 However, access to elements is performed with magic operators:
-* **Element access:** `storage[index]->*(Structure::field)`
-* **Constexpr element access:** `storage[index].get<Structure::field>()` 
-* **Object extraction:** `Structure s = storage[index].aggregate_object()`
+* **Element access:** `storage[index]->*(&Structure::field)`
+* **Constexpr element access:** `storage[index].get<&Structure::field>()` 
+* **Object aggregation:** `Structure s = storage[index].aggregate()`
+* **Aggregate and call a method:** `storage[index].method<&Structure::update>(param1, param2)`
 
 The best and the most actual reference is provided by [unit tests](https://github.com/pavelkryukov/AoAoAoTT/blob/master/test/test.cpp).
 
@@ -130,6 +131,35 @@ However, you can use `std::array` without any problems:
 ### SoA has no reverse iterators
 
 Their implementation is just not good enough at the moment.
+
+### Verbose `method` and `immutable_method`
+
+The following code is invalid
+
+```c++
+    struct Example {
+        mutable int x;
+        void inc_x() const { ++x; }
+    };
+    const SoA<Example> storage(30, Example{});
+    storage[0].method<&Example::inc_x>(); // Should 'x' be updated?
+```
+
+One of two fixes should be made. To have the data mutation correctly, do not use 'const' qualifier:
+
+```diff
+-    const SoA<Example> storage(30, Example{});
++    SoA<Examle> storage(30, Example{});
+     storage[0].method<&Example::inc_x>(); // Should 'x' be updated?
+```
+
+To prevent the data from mutation, use 'immutable_method`:
+
+```diff
+     const SoA<Example> storage(30, Example{});
+-    storage[0].method<&Example::inc_x>(); // Should 'x' be updated?
++    storage[0].immutable_method<&Example::inc_x>(); // X will not be updated
+```
 
 ----
 ## Further reading
