@@ -132,35 +132,6 @@ However, you can use `std::array` without any problems:
 
 Their implementation is just not good enough at the moment.
 
-### Verbose `method` and `immutable_method`
-
-The following code is invalid
-
-```c++
-    struct Example {
-        mutable int x;
-        void inc_x() const { ++x; }
-    };
-    const SoA<Example> storage(30, Example{});
-    storage[0].method<&Example::inc_x>(); // Should 'x' be updated?
-```
-
-One of two fixes should be made. To have the data mutation correctly, do not use 'const' qualifier:
-
-```diff
--    const SoA<Example> storage(30, Example{});
-+    SoA<Examle> storage(30, Example{});
-     storage[0].method<&Example::inc_x>(); // Should 'x' be updated?
-```
-
-To prevent the data from mutation, use 'immutable_method`:
-
-```diff
-     const SoA<Example> storage(30, Example{});
--    storage[0].method<&Example::inc_x>(); // Should 'x' be updated?
-+    storage[0].immutable_method<&Example::inc_x>(); // X will not be updated
-```
-
 ----
 ## Further reading
 

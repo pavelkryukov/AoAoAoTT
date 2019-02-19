@@ -312,13 +312,6 @@ public:
             static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
             return (this->*ptr)(std::forward<Args>(args)...);
         }
-
-        template<auto ptr, typename ... Args>
-        auto immutable_method(Args&& ... args) const // noexcept?
-        {
-            static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
-            return (this->*ptr)(std::forward<Args>(args)...);
-        }
     };
     std::vector<Iface, Allocator> storage;
 };
@@ -362,9 +355,17 @@ public:
         }
 
         template<auto ptr, typename ... Args>
-        auto immutable_method(Args&& ... args) const // noexcept?
+        auto method(Args&& ... args) const // noexcept?
         {
-            return (this->aggregate().*ptr)(std::forward<Args>(args)...);
+            static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
+            struct object_mover
+            {
+                const BaseIface* const iface;
+                T object;
+                explicit object_mover(const BaseIface* iface) : iface(iface), object(iface->aggregate()) { }
+                ~object_mover() { iface->get_base()->move_object_mutable(std::move(object), iface->get_index()); }
+            } object_mover(this);
+            return (object_mover.object.*ptr)(std::forward<Args>(args)...);
         }
     private:
         const SoA<T>* base;
@@ -450,19 +451,6 @@ public:
             mutable_base->move_object(std::move(rhs), this->get_index());
         }
 
-        template<auto ptr, typename ... Args>
-        auto method(Args&& ... args) const // noexcept?
-        {
-            static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
-            struct object_mover
-            {
-                const Iface* const iface;
-                T object;
-                explicit object_mover(const Iface* iface) : iface(iface), object(iface->aggregate()) { }
-                ~object_mover() { iface->mutable_base->move_object(std::move(object), iface->get_index()); }
-            } object_mover(this);
-            return (object_mover.object.*ptr)(std::forward<Args>(args)...);
-        }
     private:
         friend class SoA<T, Allocator>;
         SoA<T, Allocator>* mutable_base;
@@ -510,7 +498,8 @@ public:
     auto end() noexcept { return iterator{ this, size}; }
 
 private:
-    std::vector<char, Allocator> storage;
+    // Storage has to be mutable to keep mutable elements
+    mutable std::vector<char, Allocator> storage;
     std::size_t size;
 
     friend class Iface;
@@ -528,6 +517,12 @@ private:
     }
 
     void move_object(T&& rhs, size_t index) noexcept
+    {
+        // Do not care about move semantics since we support only trivial structures so far
+        tlist_helpers::copy_all_members_to_storage(rhs, storage.data(), index, size);
+    }
+
+    void move_object_mutable(T&& rhs, size_t index) const noexcept
     {
         // Do not care about move semantics since we support only trivial structures so far
         tlist_helpers::copy_all_members_to_storage(rhs, storage.data(), index, size);

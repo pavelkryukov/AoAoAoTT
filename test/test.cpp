@@ -316,12 +316,6 @@ TEST_CONTAINER_CASE("reverse iterator")
 }
 #endif
 
-TEST_CONTAINER_CASE("immutable method")
-{
-    CONTAINER<HasMethod> storage( 10, HasMethod{33, 44});
-    CHECK( storage[3].immutable_method<&HasMethod::drink_cologne>(1) == 80);
-}
-
 TEST_CONTAINER_CASE("const method")
 {
     CONTAINER<HasMethod> storage( 10, HasMethod{33, 44});
@@ -335,7 +329,7 @@ TEST_CONTAINER_CASE("const method and mutable field")
         void update_x() const { ++x; }
     };
 
-    /* const */ CONTAINER<HasMutable> storage( 10, HasMutable{109});
+    const CONTAINER<HasMutable> storage( 10, HasMutable{109});
     storage[3].method<&HasMutable::update_x>();
     CHECK( storage[3]->*(&HasMutable::x) == 110 );
 }
