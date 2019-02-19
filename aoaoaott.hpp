@@ -347,7 +347,7 @@ public:
         size_t old_size = size;
         resize_memory(s);
         for (size_t i = old_size; i < size; ++i)
-            Iface( this, i).copy_object(value);
+            copy_object(value, i);
     }
 
     Iface operator[](std::size_t index) noexcept { return Iface{ this, index}; }
@@ -358,11 +358,9 @@ public:
     public:
         T aggregate() const noexcept
         {
-            T result{};
-            tlist_helpers::copy_all_members_from_storage(base->storage.data(), &result, this->get_index(), this->get_size());
-            return result;
+            return base->aggregate(this->get_index());
         }
-       
+
         template<auto ptr, typename ... Args>
         auto immutable_method(Args&& ... args) const // noexcept?
         {
@@ -380,8 +378,8 @@ public:
         }
     protected:
         constexpr BaseIface(const SoA<T, Allocator>* base, std::size_t index) : base(base), index(index) { }
-        constexpr auto get_size()  const noexcept { return base->size; }
         constexpr auto get_index() const noexcept { return index; }
+        constexpr auto get_size() const noexcept { return base->size; }
         constexpr const auto* get_base() const noexcept { return base; }
         void inc_index() noexcept { ++index; }
         void dec_index() noexcept { --index; }
@@ -443,13 +441,13 @@ public:
         void operator=(const T& rhs) const noexcept
         {
             static_assert(std::is_copy_assignable_v<T>, "Object cannot be assigned because its copy assignment operator is implicitly deleted");
-            copy_object(rhs);
+            mutable_base->copy_object(rhs, this->get_index());
         }
 
         void operator=(T&& rhs) const noexcept
         {
             static_assert(std::is_move_assignable_v<T>, "Object cannot be assigned because its move assignment operator is implicitly deleted");
-            move_object(std::move(rhs));
+            mutable_base->move_object(std::move(rhs), this->get_index());
         }
 
         template<auto ptr, typename ... Args>
@@ -461,24 +459,13 @@ public:
                 const Iface* const iface;
                 T object;
                 explicit object_mover(const Iface* iface) : iface(iface), object(iface->aggregate()) { }
-                ~object_mover() { iface->move_object(std::move(object)); }
+                ~object_mover() { iface->mutable_base->move_object(std::move(object), iface->get_index()); }
             } object_mover(this);
             return (object_mover.object.*ptr)(std::forward<Args>(args)...);
         }
     private:
         friend class SoA<T, Allocator>;
         SoA<T, Allocator>* mutable_base;
-
-        void copy_object(const T& rhs) const noexcept
-        {
-            tlist_helpers::copy_all_members_to_storage(rhs, mutable_base->storage.data(), this->get_index(), this->get_size());
-        }
-
-        void move_object(T&& rhs) const noexcept
-        {
-            // Do not care about move semantics since we support only trivial structures so far
-            tlist_helpers::copy_all_members_to_storage(rhs, mutable_base->storage.data(), this->get_index(), this->get_size());
-        }
     };
 
     class iterator;
@@ -533,6 +520,24 @@ private:
     {
         storage.resize(s * sizeof(T));
         size = s;
+    }
+
+    void copy_object(const T& rhs, size_t index) noexcept
+    {
+        tlist_helpers::copy_all_members_to_storage(rhs, storage.data(), index, size);
+    }
+
+    void move_object(T&& rhs, size_t index) noexcept
+    {
+        // Do not care about move semantics since we support only trivial structures so far
+        tlist_helpers::copy_all_members_to_storage(rhs, storage.data(), index, size);
+    }
+
+    T aggregate(size_t index) const noexcept
+    {
+        T result{};
+        tlist_helpers::copy_all_members_from_storage(storage.data(), &result, index, size);
+        return result;
     }
 };
 
