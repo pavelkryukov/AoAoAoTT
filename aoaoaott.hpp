@@ -130,9 +130,30 @@ namespace loophole_ns {
 
 } // namespace loophole_ns
 
-namespace tlist_helpers
+namespace member_offset_helpers
+{
+    template<typename R, typename T>
+    static constexpr auto member_offset(R T::* member) noexcept
+    {
+        return reinterpret_cast<std::ptrdiff_t>(&(reinterpret_cast<T const volatile*>(NULL)->*member));
+    }
+
+    static inline constexpr std::size_t get_offset(size_t member_offset, size_t member_size, size_t size, size_t index) noexcept
+    {
+        return member_offset * size + index * member_size;
+    }
+
+    template<typename R, typename T>
+    constexpr std::size_t get_offset(R T::* member, size_t size, size_t index) noexcept
+    {
+        return get_offset(member_offset(member), sizeof(R), size, index);
+    }
+}
+
+namespace copy_helpers
 {
     using namespace loophole_ns;
+    using namespace member_offset_helpers;
 
     template<typename TL, size_t N>
     constexpr std::size_t nth_member_offset = sizeof(tlist_get_t<TL, N - 1>) + nth_member_offset<TL, N - 1>;
@@ -151,7 +172,7 @@ namespace tlist_helpers
         void copy_member(const T& src, char* dst, size_t index, size_t size)
             const noexcept(noexcept(std::is_nothrow_copy_assignable_v<R>))
         {
-            *reinterpret_cast<R*>(dst + offset * size + index * sizeofR) =
+            *reinterpret_cast<R*>(dst + get_offset(offset, sizeofR, size, index)) =
                 *reinterpret_cast<const R*>(reinterpret_cast<const char*>(&src) + offset);
         }
     public:
@@ -191,7 +212,7 @@ namespace tlist_helpers
             const noexcept(noexcept(std::is_nothrow_copy_assignable_v<R>))
         {
             *reinterpret_cast<R*>(reinterpret_cast<char*>(dst) + offset) =
-                *reinterpret_cast<const R*>(src + offset * size + index * sizeofR);
+                *reinterpret_cast<const R*>(src + get_offset(offset, sizeofR, size, index));
         }
     public:
         void operator()(const char* src, T* dst, size_t index, size_t size)
@@ -217,7 +238,7 @@ namespace tlist_helpers
         using TL = as_type_list<T>;
         copy_n_members_from_storage<T, TL::size>()(src, dst, index, size);
     }
-} // namespace tlist_helpers
+} // namespace copy_helpers
 
 template<typename T, typename Allocator = std::allocator<T>>
 class AoS {
@@ -407,13 +428,6 @@ public:
             ~object_mover() { iface->get_base()->move_object_mutable(std::move(object), iface->get_index()); }
         };
 
-        template<typename R>
-        static constexpr auto member_offset(R T::* member) noexcept
-        {
-            return reinterpret_cast<std::ptrdiff_t>(
-                  &(reinterpret_cast<T const volatile*>(NULL)->*member)
-            );
-        }
     protected:
         constexpr BaseIface(const SoA<T, Allocator>* base, std::size_t index) : base(base), index(index) { }
         constexpr auto get_index() const noexcept { return index; }
@@ -426,16 +440,9 @@ public:
         template<typename Class, typename Type> static Type get_pointer_type(Type Class::*);
 
         template<typename R>
-        std::size_t get_offset(R T::* member) const noexcept
+        constexpr std::size_t get_offset(R T::* member) const noexcept
         {
-            return member_offset(member) * get_size() + index * sizeof(R);
-        }
-
-        template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-        std::size_t get_offset_template() const noexcept
-        {
-            using Type = decltype(this->get_pointer_type(ptr));
-            return member_offset(ptr) * get_size() + index * sizeof(Type);
+            return member_offset_helpers::get_offset(member, get_size(), index);
         }
     };
 
@@ -450,7 +457,7 @@ public:
         const auto& get() const noexcept
         {
             using Type = decltype(this->get_pointer_type(ptr));
-            return *reinterpret_cast<const Type*>(this->get_base()->storage.data() + this->template get_offset_template<ptr>());
+            return *reinterpret_cast<const Type*>(this->get_base()->storage.data() + this->get_offset(ptr));
         }
 
         template<typename R>
@@ -469,7 +476,7 @@ public:
         auto& get() const noexcept
         {
             using Type = decltype(this->get_pointer_type(ptr));
-            return *reinterpret_cast<Type*>(mutable_base->storage.data() + this->template get_offset_template<ptr>());
+            return *reinterpret_cast<Type*>(mutable_base->storage.data() + this->get_offset(ptr));
         }
 
         using BaseIface::operator->*;
@@ -554,25 +561,25 @@ private:
 
     void copy_object(const T& rhs, size_t index) noexcept
     {
-        tlist_helpers::copy_all_members_to_storage(rhs, storage.data(), index, size);
+        copy_helpers::copy_all_members_to_storage(rhs, storage.data(), index, size);
     }
 
     void move_object(T&& rhs, size_t index) noexcept
     {
         // Do not care about move semantics since we support only trivial structures so far
-        tlist_helpers::copy_all_members_to_storage(rhs, storage.data(), index, size);
+        copy_helpers::copy_all_members_to_storage(rhs, storage.data(), index, size);
     }
 
     void move_object_mutable(T&& rhs, size_t index) const noexcept
     {
         // Do not care about move semantics since we support only trivial structures so far
-        tlist_helpers::copy_all_members_to_storage(rhs, storage.data(), index, size);
+        copy_helpers::copy_all_members_to_storage(rhs, storage.data(), index, size);
     }
 
     T aggregate(size_t index) const noexcept
     {
         T result{};
-        tlist_helpers::copy_all_members_from_storage(storage.data(), &result, index, size);
+        copy_helpers::copy_all_members_from_storage(storage.data(), &result, index, size);
         return result;
     }
 };
