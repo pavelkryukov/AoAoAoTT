@@ -300,24 +300,24 @@ public:
         T aggregate() const noexcept { return *this; }
 
         template<auto ptr, typename ... Args>
-        auto method(Args ... args) // noexcept?
+        auto method(Args&& ... args) // noexcept?
         {
             static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
-            return (this->*ptr)(args...);
+            return (this->*ptr)(std::forward<Args>(args)...);
         }
 
         template<auto ptr, typename ... Args>
-        auto method(Args ... args) const // noexcept?
+        auto method(Args&& ... args) const // noexcept?
         {
             static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
-            return (this->*ptr)(args...);
+            return (this->*ptr)(std::forward<Args>(args)...);
         }
 
         template<auto ptr, typename ... Args>
-        auto immutable_method(Args ... args) const // noexcept?
+        auto immutable_method(Args&& ... args) const // noexcept?
         {
             static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
-            return (this->*ptr)(args...);
+            return (this->*ptr)(std::forward<Args>(args)...);
         }
     };
     std::vector<Iface, Allocator> storage;
@@ -364,9 +364,9 @@ public:
         }
        
         template<auto ptr, typename ... Args>
-        auto immutable_method(Args ... args) const // noexcept?
+        auto immutable_method(Args&& ... args) const // noexcept?
         {
-            return (this->aggregate().*ptr)(args...);
+            return (this->aggregate().*ptr)(std::forward<Args>(args)...);
         }
     private:
         const SoA<T>* base;
@@ -453,7 +453,7 @@ public:
         }
 
         template<auto ptr, typename ... Args>
-        auto method(Args ... args) const // noexcept?
+        auto method(Args&& ... args) const // noexcept?
         {
             static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
             struct object_mover
@@ -463,7 +463,7 @@ public:
                 explicit object_mover(const Iface* iface) : iface(iface), object(iface->aggregate()) { }
                 ~object_mover() { iface->move_object(std::move(object)); }
             } object_mover(this);
-            return (object_mover.object.*ptr)(args...);
+            return (object_mover.object.*ptr)(std::forward<Args>(args)...);
         }
     private:
         friend class SoA<T, Allocator>;
