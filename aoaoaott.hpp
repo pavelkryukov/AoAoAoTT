@@ -297,7 +297,7 @@ public:
             return this->*field;
         }
 
-        T aggregate_object() const noexcept { return *this; }
+        T aggregate() const noexcept { return *this; }
     };
     std::vector<Iface, Allocator> storage;
 };
@@ -335,7 +335,7 @@ public:
     class BaseIface
     {
     public:
-        T aggregate_object() const noexcept
+        T aggregate() const noexcept
         {
             T result{};
             tlist_helpers::copy_all_members_from_storage(base->storage.data(), &result, this->get_index(), this->get_size());

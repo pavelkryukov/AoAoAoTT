@@ -31,7 +31,7 @@ std::vector<SomeDataStructure> storage;
 
 int find_value(int value_to_find) {
     for (const auto& e : storage)
-        if (e.value == value)
+        if (e.value == value_to_find)
             return i;
     return -1;
 }
@@ -48,8 +48,8 @@ With AoAoAoTT, you have to do two simple steps: replace `std::vector` by `ao_ao_
  
  int find_value(int value_to_find) {
      for (const auto& e : storage)
--        if (e.value == value)
-+        if (e->*(&SomeDataStructure::value) == value)
+-        if (e.value == value_to_find)
++        if (e->*(&SomeDataStructure::value) == value_to_find)
             return i;
     return -1;
 }

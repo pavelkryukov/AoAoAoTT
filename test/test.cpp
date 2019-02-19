@@ -220,7 +220,7 @@ TEST_CONTAINER_CASE("aggregate and run method")
     };
     CONTAINER<HasMethod> storage( 10);
     storage[4] = HasMethod{33, 44};
-    auto val = storage[4].aggregate_object();
+    auto val = storage[4].aggregate();
     val.drink_double_bourbon();
 
     CHECK( val.alain == 44 );
