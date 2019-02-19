@@ -41,6 +41,8 @@ Now you want to check whether SoA performs better.
 With AoAoAoTT, you have to do two simple steps: replace `std::vector` by `ao_ao_ao_tt::SoA` and access members with the magical `->*` operator instead of common `.`.
 
 ```diff
++#include <aoaoaott.hpp>
+
 -ao_ao_ao_tt::SoA<SomeDataStructure> storage;
 +std::vector<SomeDataStructure> storage;
  
@@ -62,6 +64,8 @@ That would be very simple: just substitute `SoA` container by fully interface-co
 ```
 
 With some macro or SFINAE helpers you would be able to change the arrangement easily, e.g. from the command line.
+
+### Summary
 
 To sum up, let's enumerate **the basic principles** of AoAoAoTT design:
 1. Input structures should not be specially prepared.
@@ -93,28 +97,36 @@ The best and the most actual reference is provided by [unit tests](https://githu
 
 That has a reason: how would you _adjust_ copy methods, move methods, or destructors if the fields are distributed all around the memory?
 
-### C-style arrays are not supported in assignment
+### No in-place methods
+
+Similarly to the one above, you cannot run `storage[i].some_method()`, as C++ code of `T::some_method` has no actual object to process. Instead, you may perform a read-modify-write:
+
+```c++
+T tmp = storage[i].aggregate_object();
+tmp.some_method();
+storage[i] = tmp;
+```
+
+Probably, that has to be wrapped to a method.
+
+### C-style arrays are not supported
 
 You cannot assign a structure with C-style array to SoA container:
 
 ```c++
    struct Example
    {
-       char array[128];
+
    };
    SoA<Example> storage(1);
    storage[0] = Example(); // Does not work;
 ```
 
-However, you can use `std::array` without problems:
+However, you can use `std::array` without any problems:
 
-```c++
-   struct Example
-   {
-       std::array<char, 128> array;
-   };
-   SoA<Example> storage(1);
-   storage[0] = Example(); // Correct
+```diff
+-       char array[128];
++       std::array<char, 128> array;
 ```
 
 ### SoA has no reverse iterators
@@ -127,7 +139,6 @@ Their implementation is just not good enough at the moment.
 * _**[Nomad Game Engine: Part 4.3 — AoS vs SoA](https://medium.com/@savas/nomad-game-engine-part-4-3-aos-vs-soa-storage-5bec879aa38c)** by Niko Savas_ — nice demonstration of SoA advantages.
 * _**[Example of AoS outperforming SoA](https://stackoverflow.com/questions/17924705/structure-of-arrays-vs-array-of-structures-in-cuda/17924782#17924782)** by Paul R_
 
-----
 ## Thanks
 
 * [Paolo Crosetto](https://github.com/crosetto) for his inspiring [SoAvsAoS implementation](https://github.com/crosetto/SoAvsAoS)
