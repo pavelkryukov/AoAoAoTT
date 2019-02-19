@@ -240,47 +240,13 @@ namespace copy_helpers
     }
 } // namespace copy_helpers
 
-template<typename T, typename Allocator = std::allocator<T>>
-class AoS {
-    static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
-public:
-    class Iface;
-
-    AoS() : AoS(0) { }
-    explicit AoS(std::size_t size) : storage(size) { }
-    AoS(std::size_t size, const T& value) : storage(size, Iface(value)) { }
-
-    void resize(std::size_t size) { storage.resize( size); }
-    void resize(std::size_t size, const T& value) { storage.resize( size, Iface(value)); }
-
-    Iface& operator[](std::size_t index) noexcept { return storage[index]; }
-    const Iface& operator[](std::size_t index) const noexcept { return storage[index]; }
-
-    using iterator = typename std::vector<Iface>::iterator;
-    using const_iterator = typename std::vector<Iface>::const_iterator;
-    using reverse_iterator = typename std::vector<Iface>::reverse_iterator;
-    using const_reverse_iterator = typename std::vector<Iface>::const_reverse_iterator;
-
-    auto begin() const noexcept { return storage.cbegin(); }
-    auto end() const noexcept { return storage.cend(); }
-    auto cbegin() const noexcept { return storage.cbegin(); }
-    auto cend() const noexcept { return storage.cend(); }
-    auto begin() noexcept { return storage.begin(); }
-    auto end() noexcept { return storage.end(); }
-#if 0
-    auto rbegin() const noexcept { return storage.crbegin(); }
-    auto rend() const noexcept { return storage.crend(); }
-    auto crbegin() const noexcept { return storage.crbegin(); }
-    auto crend() const noexcept { return storage.crend(); }
-    auto rbegin() noexcept { return storage.rbegin(); }
-    auto rend() noexcept { return storage.rend(); }
-#endif
-    class Iface : private T
+    template<typename T>
+    class AoSFacade : private T
     {
     public:
-        Iface() : T() { }
-        explicit Iface(const T& value) : T(value) { }
-        explicit Iface(T&& value) : T(std::move(value)) { }
+        AoSFacade() : T() { }
+        explicit AoSFacade(const T& value) : T(value) { }
+        explicit AoSFacade(T&& value) : T(std::move(value)) { }
 
         T& operator=(const T& rhs) noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
         {
@@ -333,6 +299,14 @@ public:
             static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
             return (this->*ptr)(std::forward<Args>(args)...);
         }
+ 
+        template<typename R, typename ... Args>
+        auto operator->*(R (T::* fun)(Args ...) const) const noexcept
+        {
+            return [this, fun](Args&& ... args){
+                return (this->*fun)(std::forward<Args>(args)...);
+            };
+        }
 
         template<typename R, typename ... Args>
         auto operator->*(R (T::* fun)(Args ...)) const noexcept
@@ -341,16 +315,43 @@ public:
                 return (this->*fun)(std::forward<Args>(args)...);
             };
         }
-
-        template<typename R, typename ... Args>
-        auto operator->*(R (T::* fun)(Args ...) const) const noexcept
-        {
-            return [this, fun](Args&& ... args){
-                return (this->*fun)(std::forward<Args>(args)...);
-            };
-        }
     };
-    std::vector<Iface, Allocator> storage;
+
+template<typename T, typename Allocator = std::allocator<T>>
+class AoS {
+public:
+    static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
+
+    AoS() : AoS(0) { }
+    explicit AoS(std::size_t size) : storage(size) { }
+    AoS(std::size_t size, const T& value) : storage(size, AoSFacade(value)) { }
+
+    void resize(std::size_t size) { storage.resize(size); }
+    void resize(std::size_t size, const T& value) { storage.resize(size, AoSFacade(value)); }
+
+    Iface& operator[](std::size_t index) noexcept { return storage[index]; }
+    const Iface& operator[](std::size_t index) const noexcept { return storage[index]; }
+
+    using iterator = typename std::vector<AoSFacade>::iterator;
+    using const_iterator = typename std::vector<AoSFacade>::const_iterator;
+    using reverse_iterator = typename std::vector<AoSFacade>::reverse_iterator;
+    using const_reverse_iterator = typename std::vector<AoSFacade>::const_reverse_iterator;
+
+    auto begin() const noexcept { return storage.cbegin(); }
+    auto end() const noexcept { return storage.cend(); }
+    auto cbegin() const noexcept { return storage.cbegin(); }
+    auto cend() const noexcept { return storage.cend(); }
+    auto begin() noexcept { return storage.begin(); }
+    auto end() noexcept { return storage.end(); }
+
+    auto rbegin() const noexcept { return storage.crbegin(); }
+    auto rend() const noexcept { return storage.crend(); }
+    auto crbegin() const noexcept { return storage.crbegin(); }
+    auto crend() const noexcept { return storage.crend(); }
+    auto rbegin() noexcept { return storage.rbegin(); }
+    auto rend() noexcept { return storage.rend(); }
+private:
+    std::vector<AoSFacade, Allocator> storage;
 };
 
 template<typename T, typename Allocator = std::allocator<T>>
