@@ -40,12 +40,6 @@
 
 using namespace ao_ao_ao_tt;
 
-TEST_CONTAINER_CASE("Empty structures")
-{
-    struct EmptyStruct {};
-    VECTOR_CONTAINER<EmptyStruct>();
-}
-
 template<typename R>
 const char* bold_cast(const R& ref)
 {

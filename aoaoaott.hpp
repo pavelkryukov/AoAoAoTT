@@ -277,6 +277,17 @@ namespace loophole_ns {
     using as_type_list =
         typename loophole_type_list<T, std::make_integer_sequence<int, fields_number<T>(0)>>::type;
 
+    template<typename... TT> 
+    static constexpr const size_t sizeof_type_list_n = (sizeof(TT) + ...);
+
+    template<typename ... TT>
+    static constexpr const size_t sizeof_type_list(type_list<TT...>)
+    {
+        return sizeof_type_list_n<TT...>;
+    }
+
+    template<typename T>
+    static constexpr const size_t sizeof_type_elements = sizeof_type_list(as_type_list<T>());
 } // namespace loophole_ns
     
 namespace member_offset_helpers
@@ -572,6 +583,7 @@ template<typename T, typename Allocator = std::allocator<char>>
 class SoAVector : public SoARandomAccessContainer<T, std::vector<char, Allocator>, VariableSize>
 {
     static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
+    static_assert(sizeof(T) == loophole_ns::sizeof_type_elements<T>, "AoAoAoTT does not support types with padding bytes");
 public:
     SoAVector() : SoAVector(0) { }
     explicit SoAVector(std::size_t s) { resize(s); }
@@ -605,6 +617,7 @@ template<typename T, size_t N>
 class SoAArray : public SoARandomAccessContainer<T, std::array<char, sizeof(T) * N>, FixedSize<N>>
 {
     static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
+    static_assert(sizeof(T) == loophole_ns::sizeof_type_elements<T>, "AoAoAoTT does not support types with padding bytes");
 public:
     SoAArray()
     {
