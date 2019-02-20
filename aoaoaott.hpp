@@ -188,12 +188,6 @@ namespace member_offset_helpers
     {
         return member_offset * size + index * member_size;
     }
-
-    template<typename R, typename T>
-    constexpr std::size_t get_offset(R T::* member, size_t size, size_t index) noexcept
-    {
-        return get_offset(member_offset(member), sizeof(R), size, index);
-    }
 } // namespace member_offset_helpers
 
 namespace copy_helpers
