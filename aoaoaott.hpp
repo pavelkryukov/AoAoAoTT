@@ -447,10 +447,9 @@ public:
 
     void resize(std::size_t s)
     {
-        if constexpr(std::is_trivially_constructible_v<T>)
-            resize_memory(s);
-        else
-            resize(s, T());
+        resize_memory(s);
+        if constexpr(!std::is_trivially_constructible_v<T>)
+            this->allocate(T());
     }
 
     void resize(std::size_t s, const T& value)
