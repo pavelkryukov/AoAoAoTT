@@ -81,9 +81,11 @@ Four containers are provided along with element facade objects and iterators: `S
 Both AoS and SoA container mimic well-known behavior of `std::vector` and `std::array`:
 
 * **Construction:** `AoS<Structure> storage(20), storage_init(20, Structure(42));`
-* **Resize for vectors:** `storage.resize(30, Structure(42))`
 * **Assignment:** `storage[index] = construct_some_structure()`
 * **Random access iterators**
+
+Vector specific operations:
+* * **Resize:** `storage.resize(30, Structure(42))`
 
 However, access to elements is performed with magic operators:
 * **Constexpr element access:** `storage[index].get<&Structure::field>()`
@@ -101,17 +103,14 @@ The best and the most actual reference is provided by [unit tests](https://githu
 
 That has a reason: how would you _adjust_ copy methods, move methods, or destructors if the fields are distributed all around the memory?
 
-### No in-place methods
+### Aggregation is costly
 
-Similarly to the one above, you cannot run `storage[i].some_method()`, as C++ code of `T::some_method` has no actual object to process. Instead, you may perform a read-modify-write:
+Similarly to the one above, you cannot run `storage[i].some_method`.
+Instead, AoAoAoTT provides an interface to aggregate a structure to stack, call a method, and dissipate it back.
+Obviously, these operations have overheads.
 
-```c++
-T tmp = storage[i].aggregate_object();
-tmp.some_method();
-storage[i] = tmp;
-```
-
-Probably, that has to be wrapped to a method.
+* **Q:** Can dissipation be explicitly bypassed if a method is `const`-qualified?
+* **A:** No. Structure may contain `mutable` fields, and we must update them as well.
 
 ### C-style arrays are not supported
 
@@ -147,6 +146,7 @@ One more obvious case is empty structures: they have a single padding byte, and 
 
 * _**[Nomad Game Engine: Part 4.3 — AoS vs SoA](https://medium.com/@savas/nomad-game-engine-part-4-3-aos-vs-soa-storage-5bec879aa38c)** by Niko Savas_ — nice demonstration of SoA advantages.
 * _**[Example of AoS outperforming SoA](https://stackoverflow.com/questions/17924705/structure-of-arrays-vs-array-of-structures-in-cuda/17924782#17924782)** by Paul R_
+* _**[The C++ Type Loophole (C++14)](http://alexpolt.github.io/type-loophole.html)** by Alexandr Poltavsky_ — explanation of Loophole compile-time reflection, the core code of AoAoAoTT.
 
 ## Thanks
 
