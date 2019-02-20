@@ -426,14 +426,13 @@ public:
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
     const auto& get() const noexcept
     {
-        using Type = decltype(this->get_pointer_type(ptr));
-        return *reinterpret_cast<const Type*>(this->get_base()->get_start_pointer(ptr) + this->get_index() * sizeof(Type));
+        return this->get_base()->get_start_pointer(ptr)[this->get_index()];
     }
 
     template<typename R>
     const R& operator->*(R T::* field) const noexcept
     {
-        return *reinterpret_cast<const R*>(this->get_base()->get_start_pointer(field) + this->get_index() * sizeof(R));
+        return this->get_base()->get_start_pointer(field)[this->get_index()];
     }
 };
 
@@ -446,8 +445,7 @@ public:
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
     auto& get() const noexcept
     {
-        using Type = decltype(this->get_pointer_type(ptr));
-        return *reinterpret_cast<Type*>(mutable_base->get_start_pointer(ptr) + this->get_index() * sizeof(Type));
+        return mutable_base->get_start_pointer(ptr)[this->get_index()];
     }
 
     using BaseSoAFacade<T, Container>::operator->*;
@@ -455,7 +453,7 @@ public:
     template<typename R>
     R& operator->*(R T::* field) const noexcept
     {
-        return *reinterpret_cast<R*>(mutable_base->get_start_pointer(field) + this->get_index() * sizeof(R));
+        return mutable_base->get_start_pointer(field)[this->get_index()];
     }
 
     void operator=(const T& rhs) const noexcept
@@ -542,40 +540,88 @@ protected:
             this->copy_object(value, i);
     }
 
+    template<size_t N> using NthMemberType = loophole_ns::tlist_get_t<loophole_ns::as_type_list<T>, N>;
+
     template<typename R>
-    const char* get_start_pointer(R T::* member) const
+    auto get_start_pointer(R T::* member) const
     {
-        return this->storage.data() + this->size * member_offset_helpers::member_offset(member);
+        return reinterpret_cast<const R*>(this->storage.data() + this->size * member_offset_helpers::member_offset(member));
     }
 
     template<typename R>
-    char* get_start_pointer(R T::* member)
+    auto get_start_pointer(R T::* member)
     {
-        return this->storage.data() + this->size * member_offset_helpers::member_offset(member);
+        return reinterpret_cast<R*>(this->storage.data() + this->size * member_offset_helpers::member_offset(member));
+    }
+
+    template<size_t N>
+    auto get_start_pointer() const
+    {
+        using R = NthMemberType<N>;
+        return reinterpret_cast<R*>(this->storage.data() + this->size * member_offset_helpers::nth_member_offset<loophole_ns::as_type_list<T>, N>);
+    }
+
+    template<size_t N>
+    auto get_start_pointer()
+    {
+        using R = NthMemberType<N>;
+        return reinterpret_cast<R*>(this->storage.data() + this->size * member_offset_helpers::nth_member_offset<loophole_ns::as_type_list<T>, N>);
     }
 
     void copy_object(const T& rhs, size_t index) noexcept
     {
-        copy_helpers::copy_all_members_to_storage(rhs, storage.data(), index, this->size);
+        copy_n_members_to_storage<loophole_ns::as_type_list<T>::size>(rhs, index);
     }
 
     void move_object(T&& rhs, size_t index) noexcept
     {
         // Do not care about move semantics since we support only trivial structures so far
-        copy_helpers::copy_all_members_to_storage(rhs, storage.data(), index, this->size);
+        copy_n_members_to_storage<loophole_ns::as_type_list<T>::size>(rhs, index);
     }
 
     void move_object_mutable(T&& rhs, size_t index) const noexcept
     {
         // Do not care about move semantics since we support only trivial structures so far
-        copy_helpers::copy_all_members_to_storage(rhs, storage.data(), index, this->size);
+        copy_n_members_to_storage<loophole_ns::as_type_list<T>::size>(rhs, index);
     }
 
     T aggregate(size_t index) const noexcept
     {
         T result{};
-        copy_helpers::copy_all_members_from_storage(storage.data(), &result, index, this->size);
+        copy_n_members_from_storage<loophole_ns::as_type_list<T>::size>(result, index);
         return result;
+    }
+
+    template<size_t N> static const auto& get_nth_member(const T& value)
+    {
+        using R = NthMemberType<N>;
+        static constexpr const size_t offset = member_offset_helpers::nth_member_offset<loophole_ns::as_type_list<T>, N>;
+        return *reinterpret_cast<const NthMemberType<N>*>(reinterpret_cast<const char*>(&value) + offset);
+    }
+
+    template<size_t N> static auto& get_nth_member(T& value)
+    {
+        using R = NthMemberType<N>;
+        static constexpr const size_t offset = member_offset_helpers::nth_member_offset<loophole_ns::as_type_list<T>, N>;
+        return *reinterpret_cast<NthMemberType<N>*>(reinterpret_cast<char*>(&value) + offset);
+    }
+
+    template<size_t N>
+    void copy_n_members_to_storage(const T& src, size_t index)
+        const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
+    {
+        get_start_pointer<N - 1>()[index] = get_nth_member<N - 1>(src);
+        if constexpr (N > 1)
+            copy_n_members_to_storage<N - 1>(src, index);
+    }
+
+    template<size_t N>
+    void copy_n_members_from_storage(T& dst, size_t index)
+        const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
+    {   
+        get_nth_member<N - 1>(dst) = get_start_pointer<N - 1>()[index];
+        if constexpr (N > 1)
+            copy_n_members_from_storage<N - 1>(dst, index);
     }
 };
 
@@ -630,60 +676,6 @@ public:
         allocate(value);
     }
 };
-
-namespace copy_helpers
-{
-    using namespace loophole_ns;
-    using namespace member_offset_helpers;
-
-    template<typename T, size_t N>
-    void copy_n_members_to_storage(const T& src, char* dst, size_t index, size_t size)
-        noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
-    {
-        using TL = as_type_list<T>;
-        using R = tlist_get_t<TL, N - 1>;
-        static constexpr const size_t offset = nth_member_offset<TL, N - 1>;
-        static constexpr const size_t sizeofR = sizeof(R);
-
-        *reinterpret_cast<R*>(dst + get_offset(offset, sizeofR, size, index)) =
-            *reinterpret_cast<const R*>(reinterpret_cast<const char*>(&src) + offset);
-
-        if constexpr (N > 1)
-            copy_n_members_to_storage<T, N - 1>(src, dst, index, size);
-    }
-
-    template<typename T>
-    void copy_all_members_to_storage(const T& src, char* dst, size_t index, size_t size)
-        noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
-    {
-        using TL = as_type_list<T>;
-        copy_n_members_to_storage<T, TL::size>(src, dst, index, size);
-    }
-
-    template<typename T, size_t N>
-    void copy_n_members_from_storage(const char* src, T* dst, size_t index, size_t size)
-        noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
-    {   
-        using TL = as_type_list<T>;
-        using R = tlist_get_t<TL, N - 1>;
-        static constexpr const size_t offset = nth_member_offset<TL, N - 1>;
-        static constexpr const size_t sizeofR = sizeof(R);
-
-        *reinterpret_cast<R*>(reinterpret_cast<char*>(dst) + offset) =
-                *reinterpret_cast<const R*>(src + get_offset(offset, sizeofR, size, index));
-
-        if constexpr (N > 1)
-            copy_n_members_from_storage<T, N - 1>(src, dst, index, size);
-    }
-
-    template<typename T>
-    void copy_all_members_from_storage(const char* src, T* dst, size_t index, size_t size)
-        noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
-    {
-        using TL = as_type_list<T>;
-        copy_n_members_from_storage<T, TL::size>(src, dst, index, size);
-    }
-} // namespace copy_helpers
 
 } // namespace ao_ao_ao_tt
 
