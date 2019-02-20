@@ -207,29 +207,19 @@ namespace copy_helpers
         noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>));
 } // namespace member_offset_helpers
    
-struct BaseFixedSize
-{
-    size_t get_runtime_size() const noexcept
-    {
-        assert(0);
-        return 0;
-    }
-};
+struct BaseFixedSize {};
 
 template<size_t N>
 struct FixedSize : BaseFixedSize
 {
     static constexpr const size_t size = N;
-    static constexpr size_t get_constexpr_size() noexcept { return N; }
 };
 
 struct VariableSize
 {
     size_t size = 0;
-    static size_t get_constexpr_size() noexcept;
-    size_t get_runtime_size() const noexcept { return size; }
 };
-    
+
 template<typename T, typename Container>
 class BaseSoAFacade
 {
@@ -279,13 +269,6 @@ private:
 protected:
     constexpr BaseSoAFacade(const Container* base, std::size_t index) : base(base), index(index) { }
     constexpr auto get_index() const noexcept { return index; }
-    constexpr auto get_size() const noexcept
-    {
-        if constexpr (std::is_base_of_v<BaseFixedSize, Container>)
-            return Container::get_constexpr_size();
-        else
-            return base->get_runtime_size();
-    }
 
     constexpr const auto* get_base() const noexcept { return base; }
     void inc_index() noexcept { ++index; }
@@ -293,12 +276,6 @@ protected:
     void advance_index(size_t n) noexcept { index += n; }
 
     template<typename Class, typename Type> static Type get_pointer_type(Type Class::*);
-
-    template<typename R>
-    constexpr std::size_t get_offset(R T::* member) const noexcept
-    {
-        return member_offset_helpers::get_offset(member, get_size(), index);
-    }
 };
 
 template<typename T, typename Container>
@@ -313,13 +290,13 @@ public:
     const auto& get() const noexcept
     {
         using Type = decltype(this->get_pointer_type(ptr));
-        return *reinterpret_cast<const Type*>(this->get_base()->storage.data() + this->get_offset(ptr));
+        return *reinterpret_cast<const Type*>(this->get_base()->get_start_pointer(ptr) + this->get_index() * sizeof(Type));
     }
 
     template<typename R>
     const R& operator->*(R T::* field) const noexcept
     {
-        return *reinterpret_cast<const R*>(this->get_base()->storage.data() + this->get_offset(field));
+        return *reinterpret_cast<const R*>(this->get_base()->get_start_pointer(field) + this->get_index() * sizeof(R));
     }
 };
 
@@ -333,7 +310,7 @@ public:
     auto& get() const noexcept
     {
         using Type = decltype(this->get_pointer_type(ptr));
-        return *reinterpret_cast<Type*>(mutable_base->storage.data() + this->get_offset(ptr));
+        return *reinterpret_cast<Type*>(mutable_base->get_start_pointer(ptr) + this->get_index() * sizeof(Type));
     }
 
     using BaseSoAFacade<T, Container>::operator->*;
@@ -341,7 +318,7 @@ public:
     template<typename R>
     R& operator->*(R T::* field) const noexcept
     {
-        return *reinterpret_cast<R*>(mutable_base->storage.data() + this->get_offset(field));
+        return *reinterpret_cast<R*>(mutable_base->get_start_pointer(field) + this->get_index() * sizeof(R));
     }
 
     void operator=(const T& rhs) const noexcept
@@ -428,6 +405,18 @@ protected:
             this->copy_object(value, i);
     }
 
+    template<typename R>
+    const char* get_start_pointer(R T::* member) const
+    {
+        return this->storage.data() + this->size * member_offset_helpers::member_offset(member);
+    }
+
+    template<typename R>
+    char* get_start_pointer(R T::* member)
+    {
+        return this->storage.data() + this->size * member_offset_helpers::member_offset(member);
+    }
+
     void copy_object(const T& rhs, size_t index) noexcept
     {
         copy_helpers::copy_all_members_to_storage(rhs, storage.data(), index, this->size);
@@ -453,7 +442,7 @@ protected:
     }
 };
 
-template<typename T, typename Allocator = std::allocator<T>>
+template<typename T, typename Allocator = std::allocator<char>>
 class SoAVector : public SoARandomAccessContainer<T, std::vector<char, Allocator>, VariableSize>
 {
     static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
