@@ -149,15 +149,15 @@ namespace member_offset_helpers
     // I'm pretty sure 95% of that code is UB
     //
     template<typename R, typename T>
-    static constexpr auto member_offset(R T::* member) noexcept
+    static constexpr std::ptrdiff_t member_offset(R T::* member) noexcept
     {
         return reinterpret_cast<std::ptrdiff_t>(&(reinterpret_cast<T const volatile*>(NULL)->*member));
     }
 
     template<typename T, size_t N> using NthMemberType = loophole_ns::tlist_get_t<loophole_ns::as_type_list<T>, N>;
 
-    template<typename T, size_t N> constexpr std::size_t nth_member_offset = sizeof(NthMemberType<T, N - 1>) + nth_member_offset<T, N - 1>;
-    template<typename T> constexpr std::size_t nth_member_offset<T, 0> = 0;
+    template<typename T, size_t N> constexpr std::ptrdiff_t nth_member_offset = sizeof(NthMemberType<T, N - 1>) + nth_member_offset<T, N - 1>;
+    template<typename T> constexpr std::ptrdiff_t nth_member_offset<T, 0> = 0;
 
     template<typename T, size_t N> static const auto& get_nth_member(const T& value)
     {
@@ -181,7 +181,7 @@ namespace member_offset_helpers
         if (is_nth_member<N>(member))
             return N;
         else if constexpr (N > 0)
-            return is_nth_member<N-1>(member);
+            return check_nth_member<N-1>(member);
         else
             return -1;
     }

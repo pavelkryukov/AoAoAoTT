@@ -149,9 +149,6 @@ struct DefaultInitializer
     float y = 0;
 };
 
-static_assert(ao_ao_ao_tt::member_offset_helpers::check_nth_member<2>(&DefaultInitializer::x) == 0);
-static_assert(ao_ao_ao_tt::member_offset_helpers::get_member_id(&DefaultInitializer::y) == 1);
-
 static_assert(!std::is_trivially_constructible_v<DefaultInitializer>);
 
 TEST_CONTAINER_CASE("default initialization")
