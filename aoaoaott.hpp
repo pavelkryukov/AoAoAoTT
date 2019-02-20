@@ -25,6 +25,7 @@
 
 #include <boost/iterator/iterator_facade.hpp>
 #include <array>
+#include <cassert>
 #include <vector>
 
 namespace ao_ao_ao_tt {
@@ -225,7 +226,7 @@ struct FixedSize : BaseFixedSize
 struct VariableSize
 {
     size_t size = 0;
-    static constexpr size_t get_constexpr_size() noexcept { assert(0); return N; }
+    static constexpr size_t get_constexpr_size() noexcept { assert(0); return 0; }
     sise_t get_runtime_size() const noexcept { return size; }
 };
     
@@ -281,7 +282,7 @@ protected:
     constexpr auto get_size() const noexcept
     {
         if constexpr (std::is_base_of_v<Container, BaseFixedSize>)
-            return Conatiner::get_constexpr_size();
+            return Container::get_constexpr_size();
         else
             return base->get_runtime_size();
     }
