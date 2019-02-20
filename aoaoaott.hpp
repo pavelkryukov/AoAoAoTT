@@ -293,7 +293,7 @@ namespace member_offset_helpers
     }
 
     template<typename TL, size_t N>
-    constexpr std::size_t nth_member_offset = sizeof(tlist_get_t<TL, N - 1>) + nth_member_offset<TL, N - 1>;
+    constexpr std::size_t nth_member_offset = sizeof(loophole_ns::tlist_get_t<TL, N - 1>) + nth_member_offset<TL, N - 1>;
 
     template<typename TL>
     constexpr std::size_t nth_member_offset<TL, 0> = 0;
