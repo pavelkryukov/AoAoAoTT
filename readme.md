@@ -101,11 +101,6 @@ The best and the most actual reference is provided by [unit tests](https://githu
 
 That has a reason: how would you _adjust_ copy methods, move methods, or destructors if the fields are distributed all around the memory?
 
-### Vectors have to be sized once
-
-If SoA data structure is resized, its data must be moved in a very non-trivial manner.
-Instead of having the unexpected side-effect, we forbid resize of vectors which already contain allocated memory.
-
 ### No in-place methods
 
 Similarly to the one above, you cannot run `storage[i].some_method()`, as C++ code of `T::some_method` has no actual object to process. Instead, you may perform a read-modify-write:

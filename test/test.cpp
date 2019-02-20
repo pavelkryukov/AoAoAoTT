@@ -62,7 +62,7 @@ TEST_CONTAINER_CASE("principal test")
     // That is the only test dependent on container type
     if constexpr (std::is_same_v<VECTOR_CONTAINER<Structure>, AoSVector<Structure>>)
         CHECK( distance == 10 * sizeof(Structure) );
-    else    
+    else
         CHECK( distance == 10 * sizeof(int) );
 }
 
@@ -79,7 +79,7 @@ TEST_CONTAINER_CASE("initialize and r/w")
     storage[3]->*(&A::val) = 3;
     storage[4]->*(&A::key) = 9;
     storage[4]->*(&A::val) = 6;
-    
+
     CHECK( storage[3]->*(&A::key) == 10 );
     CHECK( storage[3]->*(&A::val) == 3 );
     CHECK( storage[4]->*(&A::key) == 9 );
@@ -146,8 +146,11 @@ TEST_CONTAINER_CASE("assign array")
 struct DefaultInitializer
 {
     int x = 9;
-    int y = 0;
+    float y = 0;
 };
+
+static_assert(ao_ao_ao_tt::member_offset_helpers::check_nth_member<2>(&DefaultInitializer::x) == 0);
+static_assert(ao_ao_ao_tt::member_offset_helpers::get_member_id(&DefaultInitializer::y) == 1);
 
 static_assert(!std::is_trivially_constructible_v<DefaultInitializer>);
 
@@ -170,16 +173,10 @@ TEST_CONTAINER_CASE("initialization via copies")
 TEST_CONTAINER_CASE("resize by example")
 {
     DefaultInitializer example{ 234, 123};
-    VECTOR_CONTAINER<DefaultInitializer> storage;
+    VECTOR_CONTAINER<DefaultInitializer> storage(10);
     storage.resize(20, example);
+    CHECK( storage[5]->*(&DefaultInitializer::x) == 9 );
     CHECK( storage[15]->*(&DefaultInitializer::x) == 234 );
-}
-
-TEST_CONTAINER_CASE("no double resize")
-{
-    DefaultInitializer example{ 234, 123};
-    VECTOR_CONTAINER<DefaultInitializer> storage(5);
-    CHECK_THROWS_AS( storage.resize(20, example), std::runtime_error );
 }
 
 TEST_CONTAINER_CASE("structure with constant member")
@@ -352,7 +349,7 @@ TEST_CONTAINER_CASE("initialize array and r/w")
     storage[3]->*(&A::val) = 3;
     storage[4]->*(&A::key) = 9;
     storage[4]->*(&A::val) = 6;
-    
+
     CHECK( storage[3]->*(&A::key) == 10 );
     CHECK( storage[3]->*(&A::val) == 3 );
     CHECK( storage[4]->*(&A::key) == 9 );
