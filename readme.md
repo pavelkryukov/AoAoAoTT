@@ -140,6 +140,13 @@ However, you can use `std::array` without any problems:
 
 Their implementation is just not good enough at the moment.
 
+### Padding bytes are not supported
+
+Since C++ reflection capabilities are very low, support of padding bytes cannot be provided at the moment.
+However, if people care about SoA data representation, on might consider they have already handled padding bytes wisely.
+
+One more obvious case is empty structures: they have a single padding byte, and that's why they could not be stored to AoAoAoTT storages.
+
 ----
 ## Further reading
 
