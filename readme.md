@@ -27,7 +27,7 @@ struct SomeDataStructure {
     bool valid;
 };
 
-std::vector<SomeDataStructure> storage;
+std::array<SomeDataStructure, 10000> storage;
 
 int find_value(int value_to_find) {
     for (const auto& e : storage)
@@ -44,8 +44,8 @@ With AoAoAoTT, you have to do two simple steps: replace `std::vector` by `ao_ao_
 +#include <aoaoaott.hpp>
 +using namespace ao_ao_ao_tt;
 
--std::vector<SomeDataStructure> storage;
-+SoAVector<SomeDataStructure> storage;
+-std::array<SomeDataStructure, 10000> storage;
++SoAArray<SomeDataStructure, 10000> storage;
  
  int find_value(int value_to_find) {
      for (const auto& e : storage)
@@ -60,8 +60,8 @@ Imagine that for some reason SoA did not perform well and you want to rollback t
 That would be very simple: just substitute `SoA` container by fully interface-compatible `AoS`.
 
 ```diff
--SoAVector<SomeDataStructure> storage;
-+AoSVector<SomeDataStructure> storage;
+-SoAArray<SomeDataStructure, 10000> storage;
++AoSArray<SomeDataStructure, 10000> storage;
 ```
 
 With some macro or SFINAE helpers you would be able to change the arrangement easily, e.g. from the command line.
@@ -81,7 +81,7 @@ Four containers are provided along with element facade objects and iterators: `S
 Both AoS and SoA container mimic well-known behavior of `std::vector` and `std::array`:
 
 * **Construction:** `AoS<Structure> storage(20), storage_init(20, Structure(42));`
-* **Resize:** `storage.resize(30, Structure(42))`
+* **Resize for vectors:** `storage.resize(30, Structure(42))`
 * **Assignment:** `storage[index] = construct_some_structure()`
 * **Random access iterators**
 
@@ -100,6 +100,11 @@ The best and the most actual reference is provided by [unit tests](https://githu
 ### Only [trivially copyable](https://en.cppreference.com/w/cpp/named_req/TriviallyCopyable) types are supported
 
 That has a reason: how would you _adjust_ copy methods, move methods, or destructors if the fields are distributed all around the memory?
+
+### Vectors have to be sized once
+
+If SoA data structure is resized, its data must be moved in a very non-trivial manner.
+Instead of having the unexpected side-effect, we forbid resize of vectors which already contain allocated memory.
 
 ### No in-place methods
 
