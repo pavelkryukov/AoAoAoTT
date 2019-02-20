@@ -29,6 +29,11 @@
 #error "CONTAINER macro must be defined"
 #endif
 
+#define PASTER(x,y) x ## y
+#define EVALUATOR(x,y) PASTER(x,y)
+#define VECTOR_CONTAINER EVALUATOR(CONTAINER, Vector)
+#define ARRAY_CONTAINER EVALUATOR(CONTAINER, Array)
+
 #define STRINGIZE(s) STRINGIZE_H(s)
 #define STRINGIZE_H(s) #s
 #define TEST_CONTAINER_CASE(x) TEST_CASE(STRINGIZE(CONTAINER) ": " x)
@@ -38,7 +43,7 @@ using namespace ao_ao_ao_tt;
 TEST_CONTAINER_CASE("Empty structures")
 {
     struct EmptyStruct {};
-    CONTAINER<EmptyStruct>();
+    VECTOR_CONTAINER<EmptyStruct>();
 }
 
 template<typename R>
@@ -57,11 +62,11 @@ TEST_CONTAINER_CASE("principal test")
     };
     static_assert(sizeof(Structure) != sizeof(int));
 
-    CONTAINER<Structure> storage( 11);
+    VECTOR_CONTAINER<Structure> storage( 11);
     ptrdiff_t distance = bold_cast(storage[10]->*(&Structure::key)) - bold_cast(storage[0]->*(&Structure::key));
 
     // That is the only test dependent on container type
-    if constexpr (std::is_same_v<CONTAINER<Structure>, AoS<Structure>>)
+    if constexpr (std::is_same_v<VECTOR_CONTAINER<Structure>, AoSVector<Structure>>)
         CHECK( distance == 10 * sizeof(Structure) );
     else    
         CHECK( distance == 10 * sizeof(int) );
@@ -75,7 +80,7 @@ struct A {
 
 TEST_CONTAINER_CASE("initialize and r/w")
 {
-    CONTAINER<A> storage( 10);
+    VECTOR_CONTAINER<A> storage( 10);
     storage[3]->*(&A::key) = 10;
     storage[3]->*(&A::val) = 3;
     storage[4]->*(&A::key) = 9;
@@ -89,14 +94,14 @@ TEST_CONTAINER_CASE("initialize and r/w")
 
 TEST_CONTAINER_CASE("get() interface")
 {
-    CONTAINER<A> storage(10);
+    VECTOR_CONTAINER<A> storage(10);
     storage[2].get<&A::val>() = 234;
     CHECK( storage[2].get<&A::val>() == 234 );
 }
 
 TEST_CONTAINER_CASE("assign structure")
 {
-    CONTAINER<A> storage( 10);
+    VECTOR_CONTAINER<A> storage( 10);
     const A x{3, 7, 11};
     storage[2] = x; // copy assignment
     storage[3] = A{10, 3, 8}; // move assignment
@@ -111,7 +116,7 @@ TEST_CONTAINER_CASE("assign structure")
 
 TEST_CONTAINER_CASE("constant functions")
 {
-    CONTAINER<A> storage( 10);
+    VECTOR_CONTAINER<A> storage( 10);
     storage[3]->*(&A::key) = 10;
     storage[3]->*(&A::val) = 3;
 
@@ -130,14 +135,14 @@ static_assert(sizeof(WithArray) == sizeof(int) + 16);
 
 TEST_CONTAINER_CASE("structure with array")
 {
-    CONTAINER<WithArray> storage(10);
+    VECTOR_CONTAINER<WithArray> storage(10);
     std::memset(&(storage[3]->*(&WithArray::array)), 0x11, 16);
     CHECK( (storage[3]->*(&WithArray::array))[8] == 0x11);
 }
 
 TEST_CONTAINER_CASE("assign array")
 {
-    CONTAINER<WithArray> storage( 10);
+    VECTOR_CONTAINER<WithArray> storage( 10);
     WithArray hw{ 16, "Hello World!!!!"};
     storage[6] = hw;
 
@@ -154,7 +159,7 @@ static_assert(!std::is_trivially_constructible_v<DefaultInitializer>);
 
 TEST_CONTAINER_CASE("default initialization")
 {
-    CONTAINER<DefaultInitializer> storage( 10);
+    VECTOR_CONTAINER<DefaultInitializer> storage( 10);
     CHECK( storage[2]->*(&DefaultInitializer::x) == 9 );
     CHECK( storage[3]->*(&DefaultInitializer::x) == 9 );
 }
@@ -162,7 +167,7 @@ TEST_CONTAINER_CASE("default initialization")
 TEST_CONTAINER_CASE("initialization via copies")
 {
     DefaultInitializer example{ 234, 123};
-    CONTAINER<DefaultInitializer> storage( 10, example);
+    VECTOR_CONTAINER<DefaultInitializer> storage( 10, example);
     CHECK( storage[2]->*(&DefaultInitializer::x) == 234 );
     CHECK( storage[2]->*(&DefaultInitializer::y) == 123 );
     CHECK( storage[3]->*(&DefaultInitializer::x) == 234 );
@@ -171,10 +176,16 @@ TEST_CONTAINER_CASE("initialization via copies")
 TEST_CONTAINER_CASE("resize by example")
 {
     DefaultInitializer example{ 234, 123};
-    CONTAINER<DefaultInitializer> storage( 10);
+    VECTOR_CONTAINER<DefaultInitializer> storage;
     storage.resize(20, example);
-    CHECK( storage[5]->*(&DefaultInitializer::x) == 9 );
     CHECK( storage[15]->*(&DefaultInitializer::x) == 234 );
+}
+
+TEST_CONTAINER_CASE("no double resize")
+{
+    DefaultInitializer example{ 234, 123};
+    VECTOR_CONTAINER<DefaultInitializer> storage(5);
+    CHECK_THROWS_AS( storage.resize(20, example), std::runtime_error );
 }
 
 TEST_CONTAINER_CASE("structure with constant member")
@@ -184,7 +195,7 @@ TEST_CONTAINER_CASE("structure with constant member")
         const int x = 9;
         int y = 0;
     };
-    CONTAINER<ConstantMember> storage( 10);
+    VECTOR_CONTAINER<ConstantMember> storage;
     storage.resize(20);
     CHECK( storage[5]->*(&ConstantMember::x) == 9 );
     CHECK( storage[15]->*(&ConstantMember::x) == 9 );
@@ -198,7 +209,7 @@ TEST_CONTAINER_CASE("allow substructure")
         int key;
         int dum;
     };
-    CONTAINER<WithA> storage( 10);
+    VECTOR_CONTAINER<WithA> storage( 10);
     const A x{3, 7, 11};
     const WithA y{x, 4, 8, 12};
     storage[5] = y;
@@ -225,7 +236,7 @@ struct HasMethod
 
 TEST_CONTAINER_CASE("aggregate and run method")
 {
-    CONTAINER<HasMethod> storage( 10);
+    VECTOR_CONTAINER<HasMethod> storage( 10);
     storage[4] = HasMethod{33, 44};
     auto val = storage[4].aggregate();
     val.drink_double_bourbon();
@@ -238,7 +249,7 @@ TEST_CONTAINER_CASE("aggregate and run method")
 
 TEST_CONTAINER_CASE("const iterator")
 {
-    CONTAINER<A> storage(10, { 11, 12, 13});
+    VECTOR_CONTAINER<A> storage(10, { 11, 12, 13});
     size_t i = 0;
     for (const auto& entry : storage) {
         CHECK( entry->*(&A::val) == 11);
@@ -251,7 +262,7 @@ TEST_CONTAINER_CASE("const iterator")
 
 TEST_CONTAINER_CASE("mutable iterator")
 {
-    CONTAINER<A> storage(10);
+    VECTOR_CONTAINER<A> storage(10);
     for (auto& entry : storage) {
         entry->*(&A::val) = 21;
         entry->*(&A::key) = 22;
@@ -266,14 +277,14 @@ TEST_CONTAINER_CASE("mutable iterator")
 
 TEST_CONTAINER_CASE("iterator arrow operator")
 {
-    CONTAINER<A> storage(10, { 11, 12, 13});
+    VECTOR_CONTAINER<A> storage(10, { 11, 12, 13});
     CHECK( storage.cbegin()->get<&A::val>() == 11 );
     CHECK( storage.begin()->get<&A::key>()  == 12 );
 }
 
 TEST_CONTAINER_CASE("bidirectional iterator")
 {
-    CONTAINER<A> storage(10, { 11, 12, 13});
+    VECTOR_CONTAINER<A> storage(10, { 11, 12, 13});
     size_t i = 0;
     auto it = storage.cend();
     do {
@@ -288,7 +299,7 @@ TEST_CONTAINER_CASE("bidirectional iterator")
 
 TEST_CONTAINER_CASE("random access iterator")
 {
-    CONTAINER<A> storage(90);
+    VECTOR_CONTAINER<A> storage(90);
     CHECK( storage.end() - storage.begin() == 90 );
     CHECK( storage.begin() <= storage.end() );
     auto it = std::next(storage.begin(), 60);
@@ -298,7 +309,7 @@ TEST_CONTAINER_CASE("random access iterator")
 #if 0
 TEST_CONTAINER_CASE("reverse iterator")
 {
-    CONTAINER<A> storage(10);
+    VECTOR_CONTAINER<A> storage(10);
     int value = 20;
     for (auto& entry : storage) {
         entry->*(&A::val) = ++value;
@@ -318,7 +329,7 @@ TEST_CONTAINER_CASE("reverse iterator")
 
 TEST_CONTAINER_CASE("const method")
 {
-    CONTAINER<HasMethod> storage( 10, HasMethod{33, 44});
+    VECTOR_CONTAINER<HasMethod> storage( 10, HasMethod{33, 44});
     CHECK( storage[3].method<&HasMethod::drink_cologne>(1) == 80);
 }
 
@@ -329,13 +340,49 @@ TEST_CONTAINER_CASE("const method and mutable field")
         void update_x() const { ++x; }
     };
 
-    const CONTAINER<HasMutable> storage( 10, HasMutable{109});
+    const VECTOR_CONTAINER<HasMutable> storage( 10, HasMutable{109});
     storage[3].method<&HasMutable::update_x>();
     CHECK( storage[3]->*(&HasMutable::x) == 110 );
 }
 
 TEST_CONTAINER_CASE("arrow-star method")
 {
-    CONTAINER<HasMethod> storage( 10, HasMethod{33, 44});
+    VECTOR_CONTAINER<HasMethod> storage( 10, HasMethod{33, 44});
     CHECK( (storage[3]->*(&HasMethod::drink_cologne))(1) == 80);
+}
+
+TEST_CONTAINER_CASE("initialize array and r/w")
+{
+    ARRAY_CONTAINER<A, 10> storage;
+    storage[3]->*(&A::key) = 10;
+    storage[3]->*(&A::val) = 3;
+    storage[4]->*(&A::key) = 9;
+    storage[4]->*(&A::val) = 6;
+    
+    CHECK( storage[3]->*(&A::key) == 10 );
+    CHECK( storage[3]->*(&A::val) == 3 );
+    CHECK( storage[4]->*(&A::key) == 9 );
+    CHECK( storage[4]->*(&A::val) == 6 );
+}
+
+TEST_CONTAINER_CASE("array get() interface")
+{
+    ARRAY_CONTAINER<A, 10> storage;
+    storage[2].get<&A::val>() = 234;
+    CHECK( storage[2].get<&A::val>() == 234 );
+}
+
+TEST_CONTAINER_CASE("array assign structure")
+{
+    ARRAY_CONTAINER<A, 10> storage;
+    const A x{3, 7, 11};
+    storage[2] = x; // copy assignment
+    storage[3] = A{10, 3, 8}; // move assignment
+
+    CHECK( storage[2]->*(&A::val) == 3 );
+    CHECK( storage[2]->*(&A::key) == 7 );
+    CHECK( storage[2]->*(&A::dum) == 11 );
+    CHECK( storage[3]->*(&A::val) == 10 );
+    CHECK( storage[3]->*(&A::key) == 3 );
+    CHECK( storage[3]->*(&A::dum) == 8 );
 }

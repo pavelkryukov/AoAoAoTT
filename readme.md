@@ -38,13 +38,14 @@ int find_value(int value_to_find) {
 ```
 
 Now you want to check whether SoA performs better.
-With AoAoAoTT, you have to do two simple steps: replace `std::vector` by `ao_ao_ao_tt::SoA` and access members with the magical `->*` operator instead of common `.`.
+With AoAoAoTT, you have to do two simple steps: replace `std::vector` by `ao_ao_ao_tt::SoAVector` and access members with the magical `->*` operator instead of common `.`.
 
 ```diff
 +#include <aoaoaott.hpp>
++using namespace ao_ao_ao_tt;
 
--ao_ao_ao_tt::SoA<SomeDataStructure> storage;
-+std::vector<SomeDataStructure> storage;
+-std::vector<SomeDataStructure> storage;
++SoAVector<SomeDataStructure> storage;
  
  int find_value(int value_to_find) {
      for (const auto& e : storage)
@@ -59,8 +60,8 @@ Imagine that for some reason SoA did not perform well and you want to rollback t
 That would be very simple: just substitute `SoA` container by fully interface-compatible `AoS`.
 
 ```diff
--ao_ao_ao_tt::SoA<SomeDataStructure> storage;
-+ao_ao_ao_tt::AoS<SomeDataStructure> storage;
+-SoAVector<SomeDataStructure> storage;
++AoSVector<SomeDataStructure> storage;
 ```
 
 With some macro or SFINAE helpers you would be able to change the arrangement easily, e.g. from the command line.
@@ -76,7 +77,8 @@ To sum up, let's enumerate **the basic principles** of AoAoAoTT design:
 ----
 ## Supported interfaces
 
-Both AoS and SoA mimic well-known behavior of `std::vector`:
+Four containers are provided along with element facade objects and iterators: `SoAVector`, `AoSVector`, `SoAArray`, `SoAVector`;
+Both AoS and SoA container mimic well-known behavior of `std::vector` and `std::array`:
 
 * **Construction:** `AoS<Structure> storage(20), storage_init(20, Structure(42));`
 * **Resize:** `storage.resize(30, Structure(42))`
