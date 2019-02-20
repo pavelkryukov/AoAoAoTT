@@ -28,6 +28,120 @@
 
 namespace ao_ao_ao_tt {
 
+template<typename T>
+class AoSFacade : private T
+{
+public:
+    AoSFacade() : T() { }
+    explicit AoSFacade(const T& value) : T(value) { }
+    explicit AoSFacade(T&& value) : T(std::move(value)) { }
+
+    T& operator=(const T& rhs) noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
+    {
+        T::operator=(rhs);
+        return *this;
+    }
+
+    T& operator=(T&& rhs) noexcept(noexcept(std::is_nothrow_move_assignable_v<T>))
+    {
+        T::operator=(std::move(rhs));
+        return *this;
+    }
+
+    template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
+    const auto& get() const noexcept
+    {
+        return this->*ptr;
+    }
+
+    template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
+    auto& get() noexcept
+    {
+        return this->*ptr;
+    }
+
+    template<typename R>
+    R& operator->*(R T::* field) noexcept
+    {
+        return this->*field;
+    }
+
+    template<typename R>
+    const R& operator->*(R T::* field) const noexcept
+    {
+        return this->*field;
+    }
+
+    T aggregate() const noexcept { return *this; }
+
+    template<auto ptr, typename ... Args>
+    auto method(Args&& ... args) // noexcept?
+    {
+        static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
+        return (this->*ptr)(std::forward<Args>(args)...);
+    }
+
+    template<auto ptr, typename ... Args>
+    auto method(Args&& ... args) const // noexcept?
+    {
+        static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
+        return (this->*ptr)(std::forward<Args>(args)...);
+    }
+
+    template<typename R, typename ... Args>
+    auto operator->*(R (T::* fun)(Args ...)) noexcept
+    {
+        return [this, fun](Args&& ... args){
+            return (this->*fun)(std::forward<Args>(args)...);
+        };
+    }
+
+    template<typename R, typename ... Args>
+    auto operator->*(R (T::* fun)(Args ...) const) const noexcept
+    {
+        return [this, fun](Args&& ... args){
+            return (this->*fun)(std::forward<Args>(args)...);
+        };
+    }
+};
+
+template<typename T, typename Allocator = std::allocator<T>>
+class AoS {
+public:
+    static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
+
+    AoS() : AoS(0) { }
+    explicit AoS(std::size_t size) : storage(size) { }
+    AoS(std::size_t size, const T& value) : storage(size, AoSFacade(value)) { }
+
+    void resize(std::size_t size) { storage.resize(size); }
+    void resize(std::size_t size, const T& value) { storage.resize(size, AoSFacade(value)); }
+
+    auto& operator[](std::size_t index) noexcept { return storage[index]; }
+    const auto& operator[](std::size_t index) const noexcept { return storage[index]; }
+
+    using iterator = typename std::vector<AoSFacade<T>>::iterator;
+    using const_iterator = typename std::vector<AoSFacade<T>>::const_iterator;
+    using reverse_iterator = typename std::vector<AoSFacade<T>>::reverse_iterator;
+    using const_reverse_iterator = typename std::vector<AoSFacade<T>>::const_reverse_iterator;
+
+    auto begin() const noexcept { return storage.cbegin(); }
+    auto end() const noexcept { return storage.cend(); }
+    auto cbegin() const noexcept { return storage.cbegin(); }
+    auto cend() const noexcept { return storage.cend(); }
+    auto begin() noexcept { return storage.begin(); }
+    auto end() noexcept { return storage.end(); }
+
+    auto rbegin() const noexcept { return storage.crbegin(); }
+    auto rend() const noexcept { return storage.crend(); }
+    auto crbegin() const noexcept { return storage.crbegin(); }
+    auto crend() const noexcept { return storage.crend(); }
+    auto rbegin() noexcept { return storage.rbegin(); }
+    auto rend() noexcept { return storage.rend(); }
+private:
+    std::vector<AoSFacade<T>, Allocator> storage;
+};
+
 namespace loophole_ns {
     // Based on public domain code authored by Alexandr Poltavsky
     // https://github.com/alexpolt/luple
@@ -239,121 +353,7 @@ namespace copy_helpers
         copy_n_members_from_storage<T, TL::size>()(src, dst, index, size);
     }
 } // namespace copy_helpers
-
-    template<typename T>
-    class AoSFacade : private T
-    {
-    public:
-        AoSFacade() : T() { }
-        explicit AoSFacade(const T& value) : T(value) { }
-        explicit AoSFacade(T&& value) : T(std::move(value)) { }
-
-        T& operator=(const T& rhs) noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
-        {
-            T::operator=(rhs);
-            return *this;
-        }
-
-        T& operator=(T&& rhs) noexcept(noexcept(std::is_nothrow_move_assignable_v<T>))
-        {
-            T::operator=(std::move(rhs));
-            return *this;
-        }
-
-        template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-        const auto& get() const noexcept
-        {
-            return this->*ptr;
-        }
-
-        template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-        auto& get() noexcept
-        {
-            return this->*ptr;
-        }
-
-        template<typename R>
-        R& operator->*(R T::* field) noexcept
-        {
-            return this->*field;
-        }
-
-        template<typename R>
-        const R& operator->*(R T::* field) const noexcept
-        {
-            return this->*field;
-        }
-
-        T aggregate() const noexcept { return *this; }
-
-        template<auto ptr, typename ... Args>
-        auto method(Args&& ... args) // noexcept?
-        {
-            static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
-            return (this->*ptr)(std::forward<Args>(args)...);
-        }
-
-        template<auto ptr, typename ... Args>
-        auto method(Args&& ... args) const // noexcept?
-        {
-            static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
-            return (this->*ptr)(std::forward<Args>(args)...);
-        }
- 
-        template<typename R, typename ... Args>
-        auto operator->*(R (T::* fun)(Args ...)) noexcept
-        {
-            return [this, fun](Args&& ... args){
-                return (this->*fun)(std::forward<Args>(args)...);
-            };
-        }
-
-        template<typename R, typename ... Args>
-        auto operator->*(R (T::* fun)(Args ...) const) const noexcept
-        {
-            return [this, fun](Args&& ... args){
-                return (this->*fun)(std::forward<Args>(args)...);
-            };
-        }
-    };
-
-template<typename T, typename Allocator = std::allocator<T>>
-class AoS {
-public:
-    static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
-
-    AoS() : AoS(0) { }
-    explicit AoS(std::size_t size) : storage(size) { }
-    AoS(std::size_t size, const T& value) : storage(size, AoSFacade(value)) { }
-
-    void resize(std::size_t size) { storage.resize(size); }
-    void resize(std::size_t size, const T& value) { storage.resize(size, AoSFacade(value)); }
-
-    auto& operator[](std::size_t index) noexcept { return storage[index]; }
-    const auto& operator[](std::size_t index) const noexcept { return storage[index]; }
-
-    using iterator = typename std::vector<AoSFacade<T>>::iterator;
-    using const_iterator = typename std::vector<AoSFacade<T>>::const_iterator;
-    using reverse_iterator = typename std::vector<AoSFacade<T>>::reverse_iterator;
-    using const_reverse_iterator = typename std::vector<AoSFacade<T>>::const_reverse_iterator;
-
-    auto begin() const noexcept { return storage.cbegin(); }
-    auto end() const noexcept { return storage.cend(); }
-    auto cbegin() const noexcept { return storage.cbegin(); }
-    auto cend() const noexcept { return storage.cend(); }
-    auto begin() noexcept { return storage.begin(); }
-    auto end() noexcept { return storage.end(); }
-
-    auto rbegin() const noexcept { return storage.crbegin(); }
-    auto rend() const noexcept { return storage.crend(); }
-    auto crbegin() const noexcept { return storage.crbegin(); }
-    auto crend() const noexcept { return storage.crend(); }
-    auto rbegin() noexcept { return storage.rbegin(); }
-    auto rend() noexcept { return storage.rend(); }
-private:
-    std::vector<AoSFacade<T>, Allocator> storage;
-};
-
+    
 template<typename T, typename Allocator = std::allocator<T>>
 class SoA {
     static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
