@@ -281,7 +281,7 @@ namespace loophole_ns {
     static constexpr const size_t sizeof_type_list_n = (sizeof(TT) + ...);
 
     template<typename ... TT>
-    static constexpr const size_t sizeof_type_list(type_list<TT...>)
+    static constexpr size_t sizeof_type_list(type_list<TT...>)
     {
         return sizeof_type_list_n<TT...>;
     }
@@ -637,81 +637,51 @@ namespace copy_helpers
     using namespace member_offset_helpers;
 
     template<typename T, size_t N>
-    class copy_n_members_to_storage
+    void copy_n_members_to_storage(const T& src, char* dst, size_t index, size_t size)
+        noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
         using TL = as_type_list<T>;
         using R = tlist_get_t<TL, N - 1>;
         static constexpr const size_t offset = nth_member_offset<TL, N - 1>;
         static constexpr const size_t sizeofR = sizeof(R);
 
-        void copy_member(const T& src, char* dst, size_t index, size_t size)
-            const noexcept(noexcept(std::is_nothrow_copy_assignable_v<R>))
-        {
-            *reinterpret_cast<R*>(dst + get_offset(offset, sizeofR, size, index)) =
-                *reinterpret_cast<const R*>(reinterpret_cast<const char*>(&src) + offset);
-        }
-    public:
-        void operator()(const T& src, char* dst, size_t index, size_t size)
-            const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
-        {
-            copy_member(src, dst, index, size);
-            copy_n_members_to_storage<T, N - 1>()(src, dst, index, size);
-        }
-    };
+        *reinterpret_cast<R*>(dst + get_offset(offset, sizeofR, size, index)) =
+            *reinterpret_cast<const R*>(reinterpret_cast<const char*>(&src) + offset);
 
-    template<typename T>
-    struct copy_n_members_to_storage<T, 0>
-    {
-        void operator()(const T&, char*, size_t, size_t) const
-            noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
-        { }
-    };
+        if constexpr (N > 1)
+            copy_n_members_to_storage<T, N - 1>(src, dst, index, size);
+    }
 
     template<typename T>
     void copy_all_members_to_storage(const T& src, char* dst, size_t index, size_t size)
         noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
         using TL = as_type_list<T>;
-        copy_n_members_to_storage<T, TL::size>()(src, dst, index, size);
+        copy_n_members_to_storage<T, TL::size>(src, dst, index, size);
     }
 
     template<typename T, size_t N>
-    class copy_n_members_from_storage
-    {
+    void copy_n_members_from_storage(const char* src, T* dst, size_t index, size_t size)
+        noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
+    {   
         using TL = as_type_list<T>;
         using R = tlist_get_t<TL, N - 1>;
         static constexpr const size_t offset = nth_member_offset<TL, N - 1>;
         static constexpr const size_t sizeofR = sizeof(R);
 
-        void copy_member(const char* src, T* dst, size_t index, size_t size)
-            const noexcept(noexcept(std::is_nothrow_copy_assignable_v<R>))
-        {
-            *reinterpret_cast<R*>(reinterpret_cast<char*>(dst) + offset) =
+        *reinterpret_cast<R*>(reinterpret_cast<char*>(dst) + offset) =
                 *reinterpret_cast<const R*>(src + get_offset(offset, sizeofR, size, index));
-        }
-    public:
-        void operator()(const char* src, T* dst, size_t index, size_t size)
-            const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
-        {
-            copy_member(src, dst, index, size);
-            copy_n_members_from_storage<T, N - 1>()(src, dst, index, size);
-        }
-    };
 
-    template<typename T>
-    struct copy_n_members_from_storage<T, 0>
-    {
-        void operator()(const char*, T*, size_t, size_t) const
-            noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
-        { }
-    };
+        if constexpr (N > 1)
+            copy_n_members_from_storage<T, N - 1>(src, dst, index, size);
+    }
 
     template<typename T>
     void copy_all_members_from_storage(const char* src, T* dst, size_t index, size_t size)
         noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
         using TL = as_type_list<T>;
-        copy_n_members_from_storage<T, TL::size>()(src, dst, index, size);
+        copy_n_members_from_storage<T, TL::size>(src, dst, index, size);
     }
 } // namespace copy_helpers
 
