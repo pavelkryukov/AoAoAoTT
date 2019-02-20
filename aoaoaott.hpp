@@ -205,7 +205,30 @@ namespace copy_helpers
     void copy_all_members_from_storage(const char* src, T* dst, size_t index, size_t size)
         noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>));
 } // namespace member_offset_helpers
+   
+struct BaseFixedSize
+{
+    size_t get_runtime_size() const noexcept
+    {
+        assert(0);
+        return 0;
+    }
+};
 
+template<size_t N>
+struct FixedSize : BaseFixedSize
+{
+    static constexpr const size_t size = N;
+    static constexpr size_t get_constexpr_size() noexcept { return N; }
+};
+
+struct VariableSize
+{
+    size_t size = 0;
+    static constexpr size_t get_constexpr_size() noexcept { assert(0); return N; }
+    sise_t get_runtime_size() const noexcept { return size; }
+};
+    
 template<typename T, typename Container>
 class BaseSoAFacade
 {
@@ -255,7 +278,13 @@ private:
 protected:
     constexpr BaseSoAFacade(const Container* base, std::size_t index) : base(base), index(index) { }
     constexpr auto get_index() const noexcept { return index; }
-    constexpr auto get_size() const noexcept { return base->size; }
+    constexpr auto get_size() const noexcept
+    {
+        if constexpr (std::is_base_of_v<Container, BaseFixedSize>)
+            return Conatiner::get_constexpr_size();
+        else
+            return base->get_runtime_size();
+    }
     constexpr const auto* get_base() const noexcept { return base; }
     void inc_index() noexcept { ++index; }
     void dec_index() noexcept { --index; }
@@ -327,19 +356,6 @@ public:
 
 private:
     Container* mutable_base;
-};
-
-template<size_t N>
-class FixedSize
-{
-public:
-    static constexpr const size_t size = N;
-};
-
-class VariableSize
-{
-public:
-    size_t size = 0;
 };
 
 template<typename T, typename ContainerT, typename Size>
