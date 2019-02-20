@@ -292,6 +292,12 @@ namespace member_offset_helpers
         return member_offset * size + index * member_size;
     }
 
+    template<typename TL, size_t N>
+    constexpr std::size_t nth_member_offset = sizeof(tlist_get_t<TL, N - 1>) + nth_member_offset<TL, N - 1>;
+
+    template<typename TL>
+    constexpr std::size_t nth_member_offset<TL, 0> = 0;
+
     template<size_t N, typename R, typename T>
     constexpr bool is_nth_member(R T::* member) noexcept
     {
@@ -616,12 +622,6 @@ namespace copy_helpers
 {
     using namespace loophole_ns;
     using namespace member_offset_helpers;
-
-    template<typename TL, size_t N>
-    constexpr std::size_t nth_member_offset = sizeof(tlist_get_t<TL, N - 1>) + nth_member_offset<TL, N - 1>;
-
-    template<typename TL>
-    constexpr std::size_t nth_member_offset<TL, 0> = 0;
 
     template<typename T, size_t N>
     class copy_n_members_to_storage
