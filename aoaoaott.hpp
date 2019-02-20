@@ -281,11 +281,12 @@ protected:
     constexpr auto get_index() const noexcept { return index; }
     constexpr auto get_size() const noexcept
     {
-        if constexpr (std::is_base_of_v<Container, BaseFixedSize>)
+        if constexpr (std::is_base_of_v<BaseFixedSize, Container>)
             return Container::get_constexpr_size();
         else
             return base->get_runtime_size();
     }
+
     constexpr const auto* get_base() const noexcept { return base; }
     void inc_index() noexcept { ++index; }
     void dec_index() noexcept { --index; }
