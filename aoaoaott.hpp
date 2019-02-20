@@ -226,8 +226,8 @@ struct FixedSize : BaseFixedSize
 struct VariableSize
 {
     size_t size = 0;
-    static constexpr size_t get_constexpr_size() noexcept { assert(0); return 0; }
-    sise_t get_runtime_size() const noexcept { return size; }
+    static size_t get_constexpr_size() noexcept;
+    size_t get_runtime_size() const noexcept { return size; }
 };
     
 template<typename T, typename Container>
