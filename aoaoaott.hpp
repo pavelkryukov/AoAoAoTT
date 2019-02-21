@@ -384,6 +384,13 @@ protected:
         return std::get<N>(this->storage).data();
     }
 
+    template<size_t N, typename R>
+    void replicate(const R& value, size_t start, size_t end)
+    {
+        for (size_t i = start; i < end; ++i)
+            std::get<N>(this->storage)[i] = value;
+    }
+
     void copy_object(const T& rhs, size_t index) noexcept
     {
         dissipate(rhs, index, Indices{});
@@ -422,6 +429,13 @@ protected:
         return result;
     }
 
+    template<size_t ... N>
+    void replicate(const T& src, size_t start, size_t end, std::index_sequence<N...>)
+        noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
+    {
+        replicate<N>(member_offset_helpers::get_nth_member<T, N>(src))...;
+    }
+
     void check_index(size_t index) const
     {
         if (index >= size())
@@ -430,8 +444,7 @@ protected:
 
     void replicate(const T& value, size_t start, size_t end)
     {
-        for (size_t i = start; i < end; ++i)
-            this->copy_object(value, i);
+        replicate(value, start, end, Indices{});
     }
 };
 
