@@ -111,13 +111,19 @@ public:
     template<typename ... Args>
     explicit AoSRandomAccessContainer(Args&& ... args) : storage(std::forward<Args>(args)...) { }
 
-    auto& operator[](std::size_t index) noexcept { return storage[index]; }
-    const auto& operator[](std::size_t index) const noexcept { return storage[index]; }
+    auto& operator[](size_t index) noexcept { return storage[index]; }
+    const auto& operator[](size_t index) const noexcept { return storage[index]; }
+
+    auto& at(size_t index) { return storage.at(index); }
+    const auto& at(size_t index) const { return storage.at(index); }
 
     using iterator = typename ContainerT::iterator;
     using const_iterator = typename ContainerT::const_iterator;
     using reverse_iterator = typename ContainerT::reverse_iterator;
     using const_reverse_iterator = typename ContainerT::const_reverse_iterator;
+
+    auto empty() const noexcept { return storage.empty(); }
+    auto size() const noexcept { return storage.size(); }
 
     auto begin() const noexcept { return storage.cbegin(); }
     auto end() const noexcept { return storage.cend(); }
@@ -132,6 +138,12 @@ public:
     auto crend() const noexcept { return storage.crend(); }
     auto rbegin() noexcept { return storage.rbegin(); }
     auto rend() noexcept { return storage.rend(); }
+
+    const auto& front() const { return *begin(); }
+    auto& front() { return *begin(); }
+
+    const auto& back() const { auto tmp = end(); --tmp; return *tmp; }
+    auto& back() { auto tmp = end(); --tmp; return *tmp; }
 protected:
     ContainerT storage;
 };
@@ -143,11 +155,20 @@ class AoSVector : public AoSRandomAccessContainer<std::vector<AoSFacade<T>, Allo
     using Base = AoSRandomAccessContainer<std::vector<AoSFacade<T>, Allocator>>;
 public:
     AoSVector() : AoSVector(0) { }
-    explicit AoSVector(std::size_t size) : Base(size) { }
-    AoSVector(std::size_t size, const T& value) : Base(size, AoSFacade(value)) { }
+    explicit AoSVector(size_t size) : Base(size) { }
+    AoSVector(size_t size, const T& value) : Base(size, AoSFacade(value)) { }
 
-    void resize(std::size_t size) { this->storage.resize(size); }
-    void resize(std::size_t size, const T& value) { this->storage.resize(size, AoSFacade(value)); }
+    void resize(size_t size) { this->storage.resize(size); }
+    void resize(size_t size, const T& value) { this->storage.resize(size, AoSFacade(value)); }
+
+    void reserve(size_t size) { this->storage.reserve(size); }
+    auto capacity() const noexcept { return this->storage.capacity(); }
+    void shrink_to_fit() { this->storage.shrink_to_fit(); }
+
+    void push_back(const T& value) { this->storage.push_back(AoSFacade(value)); }
+    void push_back(T&& value) { this->storage.push_back(AoSFacade(std::move(value))); }
+
+    void assign(size_t count, const T& value) { this->storage.assign(count, AoSFacade(value)); }
 };
 
 template<typename T, size_t N>
@@ -157,7 +178,9 @@ class AoSArray : public AoSRandomAccessContainer<std::array<AoSFacade<T>, N>>
     using Base = AoSRandomAccessContainer<std::array<AoSFacade<T>, N>>;
 public:
     AoSArray() = default;
-    explicit AoSArray(const T& value) : Base(AoSFacade(value)) { }
+    explicit AoSArray(const T& value) { fill(value); }
+
+    void fill(const T& value) { this->storage.fill(AoSFacade(value)); }
 };
 
 template<typename T, typename Container>
@@ -206,7 +229,7 @@ private:
     };
 
 protected:
-    constexpr BaseSoAFacade(const Container* base, std::size_t index) : base(base), index(index) { }
+    constexpr BaseSoAFacade(const Container* base, size_t index) : base(base), index(index) { }
     constexpr auto get_index() const noexcept { return index; }
 
     constexpr const auto* get_base() const noexcept { return base; }
@@ -221,7 +244,7 @@ template<typename T, typename Container>
 class ConstSoAFacade : public BaseSoAFacade<T, Container>
 {
 public:
-    ConstSoAFacade( const Container* b, std::size_t index) : BaseSoAFacade<T, Container>(b, index) { }
+    ConstSoAFacade( const Container* b, size_t index) : BaseSoAFacade<T, Container>(b, index) { }
 
     using BaseSoAFacade<T, Container>::operator->*;
 
@@ -242,7 +265,7 @@ template<typename T, typename Container>
 class SoAFacade : public BaseSoAFacade<T, Container>
 {
 public:
-    SoAFacade( Container* b, std::size_t index) : BaseSoAFacade<T, Container>(b, index), mutable_base(b) { }
+    SoAFacade( Container* b, size_t index) : BaseSoAFacade<T, Container>(b, index), mutable_base(b) { }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
     auto& get() const noexcept
@@ -278,8 +301,11 @@ template<typename T, typename ContainerT>
 class SoARandomAccessContainer
 {
 public:
-    auto operator[](std::size_t index) noexcept { return SoAFacade<T, SoARandomAccessContainer>{ this, index}; }
-    auto operator[](std::size_t index) const noexcept { return ConstSoAFacade<T, SoARandomAccessContainer>{ this, index}; }
+    auto operator[](size_t index) noexcept { return SoAFacade<T, SoARandomAccessContainer>{ this, index}; }
+    auto operator[](size_t index) const noexcept { return ConstSoAFacade<T, SoARandomAccessContainer>{ this, index}; }
+
+    auto at(size_t index) { check_index(index); return operator[](index); }
+    auto at(size_t index) const { check_index(index); return operator[](index); }
 
     class iterator;
 
@@ -292,7 +318,7 @@ public:
         friend class SoARandomAccessContainer;
         friend class boost::iterator_core_access;
 
-        const_iterator(const SoARandomAccessContainer* base, std::size_t index) : ConstSoAFacade<T, SoARandomAccessContainer>(base, index) { }
+        const_iterator(const SoARandomAccessContainer* base, size_t index) : ConstSoAFacade<T, SoARandomAccessContainer>(base, index) { }
 
         const auto& dereference() const noexcept { return *this; }
         bool equal(const const_iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }
@@ -311,7 +337,7 @@ public:
         friend class SoARandomAccessContainer;
         friend class boost::iterator_core_access;
 
-        iterator(SoARandomAccessContainer* base, std::size_t index) : SoAFacade<T, SoARandomAccessContainer>(base, index) { }
+        iterator(SoARandomAccessContainer* base, size_t index) : SoAFacade<T, SoARandomAccessContainer>(base, index) { }
 
         const auto& dereference() const noexcept { return *this; }
         bool equal(const iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }
@@ -321,13 +347,21 @@ public:
         ptrdiff_t distance_to(const iterator& rhs) const noexcept { return rhs.get_index() - this->get_index(); }
     };
 
+    auto empty() const noexcept { return std::get<0>(this->storage).empty(); }
+    auto size() const noexcept { return std::get<0>(this->storage).size(); }
+
     auto cbegin() const noexcept { return const_iterator{ this, 0}; }
-    auto cend() const noexcept { return const_iterator{ this, std::get<0>(this->storage).size()}; }
+    auto cend() const noexcept { return const_iterator{ this, size()}; }
     auto begin() const noexcept { return cbegin(); }
     auto end() const noexcept { return cend(); }
     auto begin() noexcept { return iterator{ this, 0}; }
-    auto end() noexcept { return iterator{ this, std::get<0>(this->storage).size()}; }
+    auto end() noexcept { return iterator{ this, size()}; }
 
+    const auto front() const { return *begin(); }
+    auto front() { return *begin(); }
+
+    const auto back() const { auto tmp = end(); --tmp; return *tmp; }
+    auto back() { auto tmp = end(); --tmp; return *tmp; }
 protected:
     // Storage has to be mutable to keep mutable elements
     mutable ContainerT storage;
@@ -387,6 +421,18 @@ protected:
         std::tie(member_offset_helpers::get_nth_member<T, N>(result)...) = std::tie(get_start_pointer<N>()[index]...);
         return result;
     }
+
+    void check_index(size_t index) const
+    {
+        if (index >= size())
+            throw std::out_of_range("SoA container is out of range");
+    }
+
+    void replicate(const T& value, size_t start, size_t end)
+    {
+        for (size_t i = start; i < end; ++i)
+            this->copy_object(value, i);
+    }
 };
 
 template<typename T>
@@ -396,10 +442,10 @@ class SoAVector : public SoARandomAccessContainer<T, containers::loophole_tuple_
     static_assert(sizeof(T) == loophole_ns::sizeof_type_elements<T>, "AoAoAoTT does not support types with padding bytes");
 public:
     SoAVector() : SoAVector(0) { }
-    explicit SoAVector(std::size_t s) { resize(s); }
-    SoAVector(std::size_t s, const T& value) { resize(s, value); }
+    explicit SoAVector(size_t s) { resize(s); }
+    SoAVector(size_t s, const T& value) { resize(s, value); }
 
-    void resize(std::size_t s)
+    void resize(size_t s)
     {
         if constexpr(std::is_trivially_constructible_v<T>)
             resize_memory(s);
@@ -407,16 +453,48 @@ public:
             resize(s, T());
     }
 
-    void resize(std::size_t s, const T& value)
+    void resize(size_t s, const T& value)
     {
         size_t old_size = std::get<0>(this->storage).size();
         resize_memory(s);
-        for (size_t i = old_size; i < s; ++i)
-            this->copy_object(value, i);
+        this->replicate( value, old_size, s);
     }
 
+    void reserve(size_t s)
+    {
+        visitor::visit_all(this->storage, [s](auto& v){ v.reserve(s); });
+    }
+
+    void shrink_to_fit()
+    {
+        visitor::visit_all(this->storage, [](auto& v){ v.shrink_to_fit(); });
+    }
+
+    void assign(size_t s, const T& value)
+    {
+        if (s > this->size())
+            resize(s, value);
+        else
+            this->replicate( value, 0, s);
+    }
+
+    auto capacity() const noexcept { return std::get<0>(this->storage).capacity(); }
+
+    void push_back(const T& value)
+    {
+        auto s = this->size();
+        resize_memory(s + 1);
+        this->copy_object(value, s);
+    }
+
+    void push_back(T&& value)
+    {
+        auto s = this->size();
+        resize_memory(s + 1);
+        this->move_object(std::move(value), s);
+    }
 private:
-    void resize_memory(std::size_t s)
+    void resize_memory(size_t s)
     {
         visitor::visit_all(this->storage, [s](auto& v){ v.resize(s); });
     }
@@ -431,18 +509,17 @@ public:
     SoAArray()
     {
         if constexpr(!std::is_trivially_constructible_v<T>)
-            this->allocate(T());
+            fill(T());
     }
 
     SoAArray(const T& value)
     {
-        allocate(value);
+        fill(value);
     }
-private:
-    void allocate(const T& value)
+    
+    void fill(const T& value)
     {
-        for (size_t i = 0; i < N; ++i)
-            this->copy_object(value, i);
+        this->replicate( value, 0, N);
     }
 };
 

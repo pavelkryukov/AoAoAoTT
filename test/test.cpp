@@ -374,3 +374,40 @@ TEST_CONTAINER_CASE("array assign structure")
     CHECK( storage[3]->*(&A::key) == 3 );
     CHECK( storage[3]->*(&A::dum) == 8 );
 }
+
+TEST_CONTAINER_CASE("vector methods")
+{
+    VECTOR_CONTAINER<A> storage;
+    storage.push_back(A{3, 14, 15});
+    CHECK( storage[0]->*(&A::val) == 3 );
+    CHECK( !storage.empty() );
+    CHECK_THROWS_AS( storage.at(1000), std::out_of_range );
+    CHECK( storage.front()->*(&A::dum) == 15);
+    CHECK( storage.back()->*(&A::dum) == 15);
+}
+
+TEST_CONTAINER_CASE("vector assign")
+{
+    VECTOR_CONTAINER<A> storage(10, A{3, 14, 15});
+    storage.assign(5, A{2, 7, 1828});
+    CHECK( storage[7]->*(&A::dum) == 15 );
+    CHECK( storage[2]->*(&A::dum) == 1828 );
+}
+
+TEST_CONTAINER_CASE("vector capacity")
+{
+    VECTOR_CONTAINER<A> storage(10);
+    storage.reserve(200);
+    CHECK( storage.capacity() >= 200 );
+    CHECK( storage.size() == 10 );
+
+    storage.shrink_to_fit();
+    CHECK( storage.capacity() >= 10 );
+}
+
+TEST_CONTAINER_CASE("array fill")
+{
+    ARRAY_CONTAINER<A, 100> storage;
+    storage.fill(A{2, 7, 1828});
+    CHECK( storage[93]->*(&A::dum) == 1828 );
+}
