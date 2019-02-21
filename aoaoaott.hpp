@@ -75,17 +75,15 @@ public:
 
     T aggregate() const noexcept { return *this; }
 
-    template<auto ptr, typename ... Args>
+    template<auto ptr, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(ptr)>>, typename ... Args>
     auto method(Args&& ... args) // noexcept?
     {
-        static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
         return (this->*ptr)(std::forward<Args>(args)...);
     }
 
-    template<auto ptr, typename ... Args>
+    template<auto ptr, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(ptr)>>, typename ... Args>
     auto method(Args&& ... args) const // noexcept?
     {
-        static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
         return (this->*ptr)(std::forward<Args>(args)...);
     }
 
@@ -171,10 +169,9 @@ public:
         return base->aggregate(this->get_index());
     }
 
-    template<auto ptr, typename ... Args>
+    template<auto ptr, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(ptr)>>, typename ... Args>
     auto method(Args&& ... args) const // noexcept?
     {
-        static_assert(std::is_member_function_pointer_v<decltype(ptr)>, "'method' should use member function pointers");
         object_mover om(this);
         return (om.object.*ptr)(std::forward<Args>(args)...);
     }
@@ -339,6 +336,8 @@ protected:
     friend class SoAFacade<T, SoARandomAccessContainer>;
     friend class ConstSoAFacade<T, SoARandomAccessContainer>;
 
+    using Indices = std::make_index_sequence<loophole_ns::as_type_list<T>::size>;
+    
     template<typename R>
     constexpr auto get_start_pointer(R T::* member) const noexcept
     {
@@ -351,47 +350,42 @@ protected:
         return std::get<N>(this->storage).data();
     }
 
-
     void copy_object(const T& rhs, size_t index) noexcept
     {
-        copy_n_members_to_storage<loophole_ns::as_type_list<T>::size>(rhs, index);
+        dissipate(rhs, index, Indices{});
     }
 
     void move_object(T&& rhs, size_t index) noexcept
     {
         // Do not care about move semantics since we support only trivial structures so far
-        copy_n_members_to_storage<loophole_ns::as_type_list<T>::size>(rhs, index);
+        dissipate(rhs, index, Indices{});
     }
 
     void move_object_mutable(T&& rhs, size_t index) const noexcept
     {
         // Do not care about move semantics since we support only trivial structures so far
-        copy_n_members_to_storage<loophole_ns::as_type_list<T>::size>(rhs, index);
+        dissipate(rhs, index, Indices{});
     }
 
     T aggregate(size_t index) const noexcept
     {
+        return aggregate(index, Indices{});
+    }
+
+    template<size_t ... N>
+    void dissipate(const T& src, size_t index, std::index_sequence<N...>)
+        const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
+    {
+        std::tie(get_start_pointer<N>()[index]...) = std::tie(member_offset_helpers::get_nth_member<T, N>(src)...);
+    }
+
+    template<size_t ... N>
+    T aggregate(size_t index, std::index_sequence<N...>)
+        const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
+    {
         T result{};
-        copy_n_members_from_storage<loophole_ns::as_type_list<T>::size>(result, index);
+        std::tie(member_offset_helpers::get_nth_member<T, N>(result)...) = std::tie(get_start_pointer<N>()[index]...);
         return result;
-    }
-
-    template<size_t N>
-    void copy_n_members_to_storage(const T& src, size_t index)
-        const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
-    {
-        get_start_pointer<N - 1>()[index] = member_offset_helpers::get_nth_member<T, N - 1>(src);
-        if constexpr (N > 1)
-            copy_n_members_to_storage<N - 1>(src, index);
-    }
-
-    template<size_t N>
-    void copy_n_members_from_storage(T& dst, size_t index)
-        const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
-    {
-        member_offset_helpers::get_nth_member<T, N - 1>(dst) = get_start_pointer<N - 1>()[index];
-        if constexpr (N > 1)
-            copy_n_members_from_storage<N - 1>(dst, index);
     }
 };
 
