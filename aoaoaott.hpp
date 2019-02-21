@@ -435,7 +435,8 @@ protected:
     void replicate(const T& src, size_t start, size_t end, std::index_sequence<N...>)
         noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
-        ((void)replicate<N>(member_offset_helpers::get_nth_member<T, N>(src)), ...);
+        // Use comma operator to replicate the `replicate` function
+        ((void)replicate<N>(member_offset_helpers::get_nth_member<T, N>(src), start, end), ...);
     }
 
     void check_index(size_t index) const
