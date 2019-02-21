@@ -27,7 +27,7 @@
 
 #include <boost/iterator/iterator_facade.hpp>
 
-namespace ao_ao_ao_tt {
+namespace aoaoaott {
 
 template<typename T>
 class AoSFacade : private T
@@ -452,6 +452,6 @@ private:
     }
 };
 
-} // namespace ao_ao_ao_tt
+} // namespace aoaoaott
 
 #endif

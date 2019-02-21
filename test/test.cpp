@@ -38,7 +38,7 @@
 #define STRINGIZE_H(s) #s
 #define TEST_CONTAINER_CASE(x) TEST_CASE(STRINGIZE(CONTAINER) ": " x)
 
-using namespace ao_ao_ao_tt;
+using namespace aoaoaott;
 
 template<typename R>
 const char* bold_cast(const R& ref)

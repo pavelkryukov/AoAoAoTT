@@ -28,7 +28,7 @@
 #include <tuple>
 #include <vector>
 
-namespace ao_ao_ao_tt {
+namespace aoaoaott {
 
 namespace loophole_ns {
     // Based on public domain code authored by Alexandr Poltavsky
@@ -268,6 +268,6 @@ namespace visitor {
     }
 } // visitor
 
-} // namespace ao_ao_ao_tt
+} // namespace aoaoaott
 
 #endif // AO_AO_AO_TT_MAGIC
