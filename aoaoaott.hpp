@@ -387,6 +387,8 @@ protected:
     template<size_t N, typename R>
     void replicate(const R& value, size_t start, size_t end)
     {
+        // It sounds ridiculous, but there is only one for-loop in the entire header
+        // That should be optimized with vectors or 'rep stos'
         for (size_t i = start; i < end; ++i)
             std::get<N>(this->storage)[i] = value;
     }
@@ -433,7 +435,7 @@ protected:
     void replicate(const T& src, size_t start, size_t end, std::index_sequence<N...>)
         noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
-        (replicate<N>(member_offset_helpers::get_nth_member<T, N>(src)))...;
+        ((void)replicate<N>(member_offset_helpers::get_nth_member<T, N>(src)), ...);
     }
 
     void check_index(size_t index) const
