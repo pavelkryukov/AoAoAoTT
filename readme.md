@@ -38,11 +38,11 @@ int find_value(int value_to_find) {
 ```
 
 Now you want to check whether SoA performs better.
-With AoAoAoTT, you have to do two simple steps: replace `std::vector` by `ao_ao_ao_tt::SoAVector` and access members with the magical `->*` operator instead of common `.`.
+With AoAoAoTT, you have to do two simple steps: replace `std::array` by `aoaoaott::Array` and access members with the magical `->*` operator instead of common `.`.
 
 ```diff
 +#include <aoaoaott.hpp>
-+using namespace ao_ao_ao_tt;
++using namespace aoaoaott;
 
 -std::array<SomeDataStructure, 10000> storage;
 +SoAArray<SomeDataStructure, 10000> storage;
@@ -92,7 +92,7 @@ However, access to elements is performed with magic operators:
 * **Elegant element access:** `storage[index]->*(&Structure::field)`
 * **Object aggregation:** `Structure s = storage[index].aggregate()`
 * **Aggregate and call a method:** `storage[index].method<&Structure::update>(param1, param2)`
-* **Elegant lambda call:** `(storage[index]->(&Structure::update))(param1, param2)`
+* **Elegant lambda call:** `(storage[index]->*(&Structure::update))(param1, param2)`
 
 The best and the most actual reference is provided by [unit tests](https://github.com/pavelkryukov/AoAoAoTT/blob/master/test/test.cpp).
 
