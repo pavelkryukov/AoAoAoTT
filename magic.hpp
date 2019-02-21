@@ -226,34 +226,45 @@ namespace containers {
 } // containers
 
 namespace visitor {
-    template <size_t I>
-    struct visit_impl
+    template <size_t I, typename T, typename F>
+    static void visit_all_impl(T& tup, F fun)
     {
-        template <typename T, typename F>
-        static void visit(T& tup, size_t idx, F fun)
-        {
-            if (idx == I - 1) fun(std::get<I - 1>(tup));
-            else visit_impl<I - 1>::visit(tup, idx, fun);
-        }
-    };
-
-    template <>
-    struct visit_impl<0>
+        fun(std::get<I>(tup));
+        if constexpr (I > 0)
+            visit_all_impl<I - 1>(tup, fun);
+    }
+    
+    template <size_t I, typename T, typename F>
+    static void visit_impl(T& tup, size_t idx, F fun)
     {
-        template <typename T, typename F>
-        static void visit(T&, size_t, F) { assert(false); }
-    };
+        if (idx == I)
+            fun(std::get<I>(tup));
+        else if constexpr (I > 0)
+            visit_impl<I - 1>(tup, idx, fun);
+    }
 
     template <typename F, typename... Ts>
     void visit_at(std::tuple<Ts...> const& tup, size_t idx, F fun)
     {
-        visit_impl<sizeof...(Ts)>::visit(tup, idx, fun);
+        visit_impl<sizeof...(Ts) - 1>(tup, idx, fun);
     }
 
     template <typename F, typename... Ts>
     void visit_at(std::tuple<Ts...>& tup, size_t idx, F fun)
     {
-        visit_impl<sizeof...(Ts)>::visit(tup, idx, fun);
+        visit_impl<sizeof...(Ts) - 1>(tup, idx, fun);
+    }
+
+    template <typename F, typename... Ts>
+    void visit_all(std::tuple<Ts...> const& tup, F fun)
+    {
+        visit_all_impl<sizeof...(Ts) - 1>(tup, fun);
+    }
+
+    template <typename F, typename... Ts>
+    void visit_all(std::tuple<Ts...>& tup, F fun)
+    {
+        visit_all_impl<sizeof...(Ts) - 1>(tup, fun);
     }
 } // visitor
 

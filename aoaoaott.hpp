@@ -340,22 +340,17 @@ protected:
     friend class ConstSoAFacade<T, SoARandomAccessContainer>;
 
     template<typename R>
-    auto get_start_pointer(R T::* member) const
+    constexpr auto get_start_pointer(R T::* member) const noexcept
     {
         return containers::get_data_ptr<std::remove_cv_t<R>>(this->storage, member_offset_helpers::get_member_id(member));
     }
 
     template<size_t N>
-    auto get_start_pointer() const
+    constexpr auto get_start_pointer() const noexcept
     {
         return std::get<N>(this->storage).data();
     }
 
-    template<size_t N>
-    auto get_start_pointer()
-    {
-        return std::get<N>(this->storage).data();
-    }
 
     void copy_object(const T& rhs, size_t index) noexcept
     {
@@ -429,8 +424,7 @@ public:
 private:
     void resize_memory(std::size_t s)
     {
-        for (size_t i = 0; i < std::tuple_size<decltype(this->storage)>::value; ++i)
-            visitor::visit_at(this->storage, i, [s](auto& v){ v.resize(s); });
+        visitor::visit_all(this->storage, [s](auto& v){ v.resize(s); });
     }
 };
 
