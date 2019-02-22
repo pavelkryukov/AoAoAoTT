@@ -39,134 +39,8 @@ protected:
     using Indices = std::make_index_sequence<members_count>;
 };
 
-template<typename T>
-class AoSFacade : private T
-{
-public:
-    AoSFacade() : T() { }
-    explicit AoSFacade(const T& value) : T(value) { }
-    explicit AoSFacade(T&& value) : T(std::move(value)) { }
-
-    void operator=(const T& rhs) noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>)) { T::operator=(rhs); }
-    void operator=(T&& rhs) noexcept(noexcept(std::is_nothrow_move_assignable_v<T>)) { T::operator=(std::move(rhs)); }
-
-    template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-    const auto& get() const noexcept { return this->*ptr; }
-
-    template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-    auto& get() noexcept { return this->*ptr; }
-
-    template<typename R>
-    R& operator->*(R T::* field) noexcept { return this->*field; }
-
-    template<typename R>
-    const R& operator->*(R T::* field) const noexcept { return this->*field; }
-
-    T aggregate() const noexcept { return *this; }
-
-    template<auto ptr, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(ptr)>>, typename ... Args>
-    auto method(Args&& ... args) /* noexcept? */ { return (this->*ptr)(std::forward<Args>(args)...); }
-
-    template<auto ptr, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(ptr)>>, typename ... Args>
-    auto method(Args&& ... args) const /* noexcept? */ { return (this->*ptr)(std::forward<Args>(args)...); }
-
-    template<typename R, typename ... Args>
-    auto operator->*(R (T::* fun)(Args ...)) noexcept
-    {
-        return [this, fun](Args&& ... args){
-            return (this->*fun)(std::forward<Args>(args)...);
-        };
-    }
-
-    template<typename R, typename ... Args>
-    auto operator->*(R (T::* fun)(Args ...) const) const noexcept
-    {
-        return [this, fun](Args&& ... args){
-            return (this->*fun)(std::forward<Args>(args)...);
-        };
-    }
-};
-
-template<typename ContainerT>
-class AoSRandomAccessContainer : Traits<typename ContainerT::value_type>
-{
-public:
-    template<typename ... Args>
-    explicit AoSRandomAccessContainer(Args&& ... args) : storage(std::forward<Args>(args)...) { }
-
-    auto& operator[](size_t index) noexcept { return storage[index]; }
-    const auto& operator[](size_t index) const noexcept { return storage[index]; }
-
-    auto& at(size_t index) { return storage.at(index); }
-    const auto& at(size_t index) const { return storage.at(index); }
-
-    using iterator = typename ContainerT::iterator;
-    using const_iterator = typename ContainerT::const_iterator;
-    using reverse_iterator = typename ContainerT::reverse_iterator;
-    using const_reverse_iterator = typename ContainerT::const_reverse_iterator;
-
-    auto empty() const noexcept { return storage.empty(); }
-    auto size() const noexcept { return storage.size(); }
-
-    auto begin() const noexcept { return storage.cbegin(); }
-    auto end() const noexcept { return storage.cend(); }
-    auto cbegin() const noexcept { return storage.cbegin(); }
-    auto cend() const noexcept { return storage.cend(); }
-    auto begin() noexcept { return storage.begin(); }
-    auto end() noexcept { return storage.end(); }
-
-    auto rbegin() const noexcept { return storage.crbegin(); }
-    auto rend() const noexcept { return storage.crend(); }
-    auto crbegin() const noexcept { return storage.crbegin(); }
-    auto crend() const noexcept { return storage.crend(); }
-    auto rbegin() noexcept { return storage.rbegin(); }
-    auto rend() noexcept { return storage.rend(); }
-
-    const auto& front() const { return *begin(); }
-    auto& front() { return *begin(); }
-
-    const auto& back() const { auto tmp = end(); --tmp; return *tmp; }
-    auto& back() { auto tmp = end(); --tmp; return *tmp; }
-protected:
-    ContainerT storage;
-};
-
-template<typename T, typename Allocator = std::allocator<T>>
-class AoSVector : public AoSRandomAccessContainer<std::vector<AoSFacade<T>, Allocator>>
-{
-    using Base = AoSRandomAccessContainer<std::vector<AoSFacade<T>, Allocator>>;
-public:
-    AoSVector() : AoSVector(0) { }
-    explicit AoSVector(size_t size) : Base(size) { }
-    AoSVector(size_t size, const T& value) : Base(size, AoSFacade(value)) { }
-
-    void resize(size_t size) { this->storage.resize(size); }
-    void resize(size_t size, const T& value) { this->storage.resize(size, AoSFacade(value)); }
-
-    void reserve(size_t size) { this->storage.reserve(size); }
-    auto capacity() const noexcept { return this->storage.capacity(); }
-    void shrink_to_fit() { this->storage.shrink_to_fit(); }
-
-    void push_back(const T& value) { this->storage.push_back(AoSFacade(value)); }
-    void push_back(T&& value) { this->storage.push_back(AoSFacade(std::move(value))); }
-
-    void assign(size_t count, const T& value) { this->storage.assign(count, AoSFacade(value)); }
-};
-
-template<typename T, size_t N>
-class AoSArray : public AoSRandomAccessContainer<std::array<AoSFacade<T>, N>>
-{
-    static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
-    using Base = AoSRandomAccessContainer<std::array<AoSFacade<T>, N>>;
-public:
-    AoSArray() = default;
-    explicit AoSArray(const T& value) { fill(value); }
-
-    void fill(const T& value) { this->storage.fill(AoSFacade(value)); }
-};
-
 template<typename T, typename Container>
-class BaseSoAFacade
+class BaseFacade
 {
 public:
     T aggregate() const noexcept { return base->aggregate(this->get_index()); }
@@ -201,14 +75,14 @@ private:
     size_t index;
     struct object_mover
     {
-        const BaseSoAFacade* const SoAFacade;
+        const BaseFacade* const Facade;
         T object;
-        explicit object_mover(const BaseSoAFacade* SoAFacade) : SoAFacade(SoAFacade), object(SoAFacade->aggregate()) { }
-        ~object_mover() { SoAFacade->get_base()->dissipate(std::move(object), SoAFacade->get_index()); }
+        explicit object_mover(const BaseFacade* Facade) : Facade(Facade), object(Facade->aggregate()) { }
+        ~object_mover() { Facade->get_base()->dissipate(std::move(object), Facade->get_index()); }
     };
 
 protected:
-    constexpr BaseSoAFacade(const Container* base, size_t index) : base(base), index(index) { }
+    constexpr BaseFacade(const Container* base, size_t index) : base(base), index(index) { }
     constexpr auto get_index() const noexcept { return index; }
 
     constexpr const auto* get_base() const noexcept { return base; }
@@ -218,12 +92,12 @@ protected:
 };
 
 template<typename T, typename Container>
-class ConstSoAFacade : public BaseSoAFacade<T, Container>
+class ConstFacade : public BaseFacade<T, Container>
 {
 public:
-    ConstSoAFacade( const Container* b, size_t index) : BaseSoAFacade<T, Container>(b, index) { }
+    ConstFacade( const Container* b, size_t index) : BaseFacade<T, Container>(b, index) { }
 
-    using BaseSoAFacade<T, Container>::operator->*;
+    using BaseFacade<T, Container>::operator->*;
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
     const auto& get() const noexcept { return this->get_base()->get_element(ptr, this->get_index()); }
@@ -236,15 +110,15 @@ public:
 };
 
 template<typename T, typename Container>
-class SoAFacade : public BaseSoAFacade<T, Container>
+class Facade : public BaseFacade<T, Container>
 {
 public:
-    SoAFacade( Container* b, size_t index) : BaseSoAFacade<T, Container>(b, index) { }
+    Facade( Container* b, size_t index) : BaseFacade<T, Container>(b, index) { }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
     auto& get() const noexcept { return this->get_base()->get_element(ptr, this->get_index()); }
 
-    using BaseSoAFacade<T, Container>::operator->*;
+    using BaseFacade<T, Container>::operator->*;
 
     template<typename R>
     R& operator->*(R T::* field) const noexcept { return this->get_base()->get_element(field, this->get_index()); }
@@ -263,68 +137,48 @@ public:
 };
 
 template<typename T, typename ContainerT>
+class AoSRandomAccessContainer : Traits<T>
+{
+    friend class BaseFacade<T, AoSRandomAccessContainer>;
+    friend class Facade<T, AoSRandomAccessContainer>;
+    friend class ConstFacade<T, AoSRandomAccessContainer>;
+
+public:
+    auto size() const noexcept { return storage.size(); }
+    bool empty() const noexcept { return storage.empty(); }
+
+protected:
+    T aggregate(size_t index) const noexcept { return storage[index]; }
+    void dissipate(const T& rhs, size_t index) const noexcept  { storage[index] = rhs; }
+    void dissipate(T&& rhs, size_t index) const noexcept { storage[index] = std::move(rhs); }
+
+    void replicate(const T& value, size_t start, size_t end)
+    {
+        for (size_t i = start; i < end; ++i)
+            storage[i] = value;
+    }
+
+    template<typename R>
+    constexpr R& get_element(R T::* member, size_t index) const noexcept
+    {
+        return storage[index].*member;
+    }
+
+    mutable ContainerT storage;
+};
+
+template<typename T, typename ContainerT>
 class SoARandomAccessContainer : Traits<T>
 {
+    using Indices = typename Traits<T>::Indices;
+    friend class BaseFacade<T, SoARandomAccessContainer>;
+    friend class Facade<T, SoARandomAccessContainer>;
+    friend class ConstFacade<T, SoARandomAccessContainer>;
+
 public:
-    using Indices     = typename Traits<T>::Indices;
-    using BaseFacade  = BaseSoAFacade<T, SoARandomAccessContainer>;
-    using Facade      = SoAFacade<T, SoARandomAccessContainer>;
-    using ConstFacade = ConstSoAFacade<T, SoARandomAccessContainer>;
-
-    auto operator[](size_t index) noexcept { return Facade{ this, index}; }
-    auto operator[](size_t index) const noexcept { return ConstFacade{ this, index}; }
-
-    auto at(size_t index) { check_index(index); return operator[](index); }
-    auto at(size_t index) const { check_index(index); return operator[](index); }
-
-    class const_iterator : ConstFacade,
-        public boost::iterator_facade<const_iterator, ConstFacade const, std::random_access_iterator_tag, const ConstFacade&>
-    {
-        friend class SoARandomAccessContainer;
-        friend class boost::iterator_core_access;
-
-        const_iterator(const SoARandomAccessContainer* base, size_t index) : ConstFacade(base, index) { }
-
-        const auto& dereference() const noexcept { return *this; }
-        bool equal(const const_iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }
-        void increment() noexcept { this->inc_index(); }
-        void decrement() noexcept { this->dec_index(); }
-        void advance(size_t n) noexcept { this->advance_index( n); }
-        ptrdiff_t distance_to(const const_iterator& rhs) const noexcept { return rhs.get_index() - this->get_index(); }
-    };
-
-    class iterator : Facade,
-        public boost::iterator_facade<iterator, Facade, std::random_access_iterator_tag, const Facade&>
-    {
-        friend class SoARandomAccessContainer;
-        friend class boost::iterator_core_access;
-
-        iterator(SoARandomAccessContainer* base, size_t index) : Facade(base, index) { }
-
-        const auto& dereference() const noexcept { return *this; }
-        bool equal(const iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }
-        void increment() noexcept { this->inc_index(); }
-        void decrement() noexcept { this->dec_index(); }
-        void advance(size_t n) noexcept { this->advance_index( n); }
-        ptrdiff_t distance_to(const iterator& rhs) const noexcept { return rhs.get_index() - this->get_index(); }
-    };
-
-    auto empty() const noexcept { return std::get<0>(this->storage).empty(); }
-    auto size() const noexcept { return std::get<0>(this->storage).size(); }
-
-    auto cbegin() const noexcept { return const_iterator{ this, 0}; }
-    auto cend() const noexcept { return const_iterator{ this, size()}; }
-    auto begin() const noexcept { return cbegin(); }
-    auto end() const noexcept { return cend(); }
-    auto begin() noexcept { return iterator{ this, 0}; }
-    auto end() noexcept { return iterator{ this, size()}; }
-
-    const auto front() const { return *begin(); }
-    auto front() { return *begin(); }
-
-    const auto back() const { auto tmp = end(); --tmp; return *tmp; }
-    auto back() { auto tmp = end(); --tmp; return *tmp; }
-
+    auto size() const noexcept { return std::get<0>(storage).size(); }
+    bool empty() const noexcept { return std::get<0>(storage).empty(); }
+    
 protected:
     T aggregate(size_t index) const noexcept { return aggregate(index, Indices{}); }
     void dissipate(const T& rhs, size_t index) const noexcept  { dissipate(rhs, index, Indices{}); }
@@ -334,9 +188,6 @@ protected:
     mutable ContainerT storage;
 
 private:
-    friend class BaseSoAFacade<T, SoARandomAccessContainer>;
-    friend class SoAFacade<T, SoARandomAccessContainer>;
-    friend class ConstSoAFacade<T, SoARandomAccessContainer>;
 
     template<typename R, size_t I>
     R* get_data_ptr_impl(size_t index) const
@@ -395,16 +246,106 @@ private:
         // Use comma operator to replicate the `replicate` function
         ((void)replicate<N>(member_offset_helpers::get_nth_member<T, N>(src), start, end), ...);
     }
+};
 
+template<typename T, typename BaseContainer>
+class RandomAccessContainer : public BaseContainer
+{
+    using MyBaseFacade  = BaseFacade<T, BaseContainer>;
+    using MyFacade      = Facade<T, BaseContainer>;
+    using MyConstFacade = ConstFacade<T, BaseContainer>;
+public:
+    auto operator[](size_t index) noexcept { return MyFacade{ this, index}; }
+    auto operator[](size_t index) const noexcept { return MyConstFacade{ this, index}; }
+
+    auto at(size_t index) { check_index(index); return operator[](index); }
+    auto at(size_t index) const { check_index(index); return operator[](index); }
+
+    class const_iterator : MyConstFacade,
+        public boost::iterator_facade<const_iterator, MyConstFacade const, std::random_access_iterator_tag, const MyConstFacade&>
+    {
+        friend class RandomAccessContainer;
+        friend class boost::iterator_core_access;
+
+        const_iterator(const BaseContainer* base, size_t index) : MyConstFacade(base, index) { }
+
+        const auto& dereference() const noexcept { return *this; }
+        bool equal(const const_iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }
+        void increment() noexcept { this->inc_index(); }
+        void decrement() noexcept { this->dec_index(); }
+        void advance(size_t n) noexcept { this->advance_index( n); }
+        ptrdiff_t distance_to(const const_iterator& rhs) const noexcept { return rhs.get_index() - this->get_index(); }
+    };
+
+    class iterator : MyFacade,
+        public boost::iterator_facade<iterator, MyFacade, std::random_access_iterator_tag, const MyFacade&>
+    {
+        friend class RandomAccessContainer;
+        friend class boost::iterator_core_access;
+
+        iterator(BaseContainer* base, size_t index) : MyFacade(base, index) { }
+
+        const auto& dereference() const noexcept { return *this; }
+        bool equal(const iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }
+        void increment() noexcept { this->inc_index(); }
+        void decrement() noexcept { this->dec_index(); }
+        void advance(size_t n) noexcept { this->advance_index( n); }
+        ptrdiff_t distance_to(const iterator& rhs) const noexcept { return rhs.get_index() - this->get_index(); }
+    };
+
+    auto cbegin() const noexcept { return const_iterator{ this, 0}; }
+    auto cend() const noexcept { return const_iterator{ this, this->size()}; }
+    auto begin() const noexcept { return cbegin(); }
+    auto end() const noexcept { return cend(); }
+    auto begin() noexcept { return iterator{ this, 0}; }
+    auto end() noexcept { return iterator{ this, this->size()}; }
+
+    const auto front() const { return *begin(); }
+    auto front() { return *begin(); }
+
+    const auto back() const { auto tmp = end(); --tmp; return *tmp; }
+    auto back() { auto tmp = end(); --tmp; return *tmp; }
+
+private:
     void check_index(size_t index) const
     {
-        if (index >= size())
+        if (index >= this->size())
             throw std::out_of_range("SoA container is out of range");
     }
 };
 
+template<typename T, typename Allocator = std::allocator<T>>
+class AoSVector : public RandomAccessContainer<T, AoSRandomAccessContainer<T, std::vector<T, Allocator>>>
+{
+public:
+    AoSVector() { }
+    explicit AoSVector(size_t size) { resize(size); }
+    AoSVector(size_t size, const T& value) { resize(size, value); }
+
+    void resize(size_t size) { this->storage.resize(size); }
+    void resize(size_t size, const T& value) { this->storage.resize(size, value); }
+
+    void reserve(size_t size) { this->storage.reserve(size); }
+    auto capacity() const noexcept { return this->storage.capacity(); }
+    void shrink_to_fit() { this->storage.shrink_to_fit(); }
+
+    void push_back(const T& value) { this->storage.push_back(value); }
+    void push_back(T&& value) { this->storage.push_back(std::move(value)); }
+
+    void assign(size_t count, const T& value) { this->storage.assign(count, value); }
+};
+
+template<typename T, size_t N>
+class AoSArray : public RandomAccessContainer<T, AoSRandomAccessContainer<T, std::array<T, N>>>
+{
+public:
+    AoSArray() = default;
+    explicit AoSArray(const T& value) { fill(value); }
+    void fill(const T& value) { this->storage.fill(value); }
+};
+
 template<typename T>
-class SoAVector : public SoARandomAccessContainer<T, containers::loophole_tuple_of_vectors<T>>
+class SoAVector : public RandomAccessContainer<T, SoARandomAccessContainer<T, containers::loophole_tuple_of_vectors<T>>>
 {
 public:
     SoAVector() : SoAVector(0) { }
@@ -456,7 +397,7 @@ private:
 };
 
 template<typename T, size_t N>
-class SoAArray : public SoARandomAccessContainer<T, containers::loophole_tuple_of_arrays<N, T>>
+class SoAArray : public RandomAccessContainer<T, SoARandomAccessContainer<T, containers::loophole_tuple_of_arrays<N, T>>>
 {
 public:
     SoAArray()
