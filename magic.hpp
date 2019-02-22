@@ -193,7 +193,6 @@ namespace member_offset_helpers
     }
 } // namespace member_offset_helpers
 
-
 namespace containers {
     using namespace loophole_ns;
 
@@ -204,25 +203,6 @@ namespace containers {
     template<size_t N, typename ... TT> using tuple_of_arrays = std::tuple<std::array<std::remove_cv_t<TT>, N>...>;
     template<size_t N, typename ... TT> tuple_of_arrays<N, TT...> tuple_of_arrays_generator(type_list<TT...>);
     template<size_t N, typename T> using loophole_tuple_of_arrays = decltype(tuple_of_arrays_generator<N>(as_type_list<T>()));
-
-    template<typename R, typename Tuple, size_t I>
-    R* get_data_ptr_impl(Tuple& tuple, size_t index)
-    {
-        if constexpr (I == 0)
-            return nullptr;
-        else if constexpr(!std::is_same_v<typename std::tuple_element_t<I - 1, Tuple>::value_type, R>)
-            return get_data_ptr_impl<R, Tuple, I - 1>(tuple, index);
-        else if (index != I - 1)
-            return get_data_ptr_impl<R, Tuple, I - 1>(tuple, index);
-        else
-            return std::get<I - 1>(tuple).data();
-    }
-
-    template<typename R, typename Tuple>
-    R* get_data_ptr(Tuple& tuple, size_t index)
-    {
-        return get_data_ptr_impl<R, Tuple, std::tuple_size<Tuple>::value>(tuple, index);
-    }
 } // containers
 
 namespace visitor {
@@ -232,27 +212,6 @@ namespace visitor {
         fun(std::get<I>(tup));
         if constexpr (I > 0)
             visit_all_impl<I - 1>(tup, fun);
-    }
-    
-    template <size_t I, typename T, typename F>
-    static void visit_impl(T& tup, size_t idx, F fun)
-    {
-        if (idx == I)
-            fun(std::get<I>(tup));
-        else if constexpr (I > 0)
-            visit_impl<I - 1>(tup, idx, fun);
-    }
-
-    template <typename F, typename... Ts>
-    void visit_at(std::tuple<Ts...> const& tup, size_t idx, F fun)
-    {
-        visit_impl<sizeof...(Ts) - 1>(tup, idx, fun);
-    }
-
-    template <typename F, typename... Ts>
-    void visit_at(std::tuple<Ts...>& tup, size_t idx, F fun)
-    {
-        visit_impl<sizeof...(Ts) - 1>(tup, idx, fun);
     }
 
     template <typename F, typename... Ts>
