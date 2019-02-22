@@ -46,7 +46,7 @@ With AoAoAoTT, you have to do two simple steps: replace `std::array` by `aoaoaot
 
 -std::array<SomeDataStructure, 10000> storage;
 +SoAArray<SomeDataStructure, 10000> storage;
- 
+
  int find_value(int value_to_find) {
      for (const auto& e : storage)
 -        if (e.value == value_to_find)
@@ -130,7 +130,7 @@ However, you can use `std::array` without any problems:
 +       std::array<char, 128> array;
 ```
 
-### SoA has no reverse iterators
+### No reverse iterators
 
 Their implementation is just not good enough at the moment.
 

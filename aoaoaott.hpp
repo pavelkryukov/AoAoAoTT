@@ -32,18 +32,20 @@ namespace aoaoaott {
 template<typename T>
 class Traits
 {
-    static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
-    static_assert(sizeof(T) == loophole_ns::sizeof_type_elements<T>, "AoAoAoTT does not support types with padding bytes");
 protected:
-    static const constexpr size_t members_count = loophole_ns::as_type_list<T>::size;
-    using Indices = std::make_index_sequence<members_count>;
+    static_assert(!std::is_empty<T>::value, "AoAoAoTT does not support empty structures");
+    static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable structures");
+    using AsTypeList = loophole_ns::as_type_list<T>;
+    static_assert(sizeof(T) == AsTypeList::sizeof_total, "AoAoAoTT does not support structures with padding bytes");
 };
 
-template<typename T, typename Container>
+template<typename Container>
 class BaseFacade
 {
+protected:
+    using T = typename Container::value_type;
 public:
-    T aggregate() const noexcept { return base->aggregate(this->get_index()); }
+    auto aggregate() const noexcept { return base->aggregate(this->get_index()); }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(ptr)>>, typename ... Args>
     auto method(Args&& ... args) const // noexcept?
@@ -70,6 +72,15 @@ public:
         };
     }
 
+protected:
+    constexpr BaseFacade(const Container* base, size_t index) : base(base), index(index) { }
+    constexpr auto get_index() const noexcept { return index; }
+
+    constexpr const auto* get_base() const noexcept { return base; }
+    void inc_index() noexcept { ++index; }
+    void dec_index() noexcept { --index; }
+    void advance_index(ptrdiff_t n) noexcept { index += n; }
+
 private:
     const Container* base;
     size_t index;
@@ -80,24 +91,16 @@ private:
         explicit object_mover(const BaseFacade* Facade) : Facade(Facade), object(Facade->aggregate()) { }
         ~object_mover() { Facade->get_base()->dissipate(std::move(object), Facade->get_index()); }
     };
-
-protected:
-    constexpr BaseFacade(const Container* base, size_t index) : base(base), index(index) { }
-    constexpr auto get_index() const noexcept { return index; }
-
-    constexpr const auto* get_base() const noexcept { return base; }
-    void inc_index() noexcept { ++index; }
-    void dec_index() noexcept { --index; }
-    void advance_index(ptrdiff_t n) noexcept { index += n; }
 };
 
-template<typename T, typename Container>
-class ConstFacade : public BaseFacade<T, Container>
+template<typename Container>
+class ConstFacade : public BaseFacade<Container>
 {
+    using typename BaseFacade<Container>::T;
 public:
-    ConstFacade( const Container* b, size_t index) : BaseFacade<T, Container>(b, index) { }
+    ConstFacade( const Container* b, size_t index) : BaseFacade<Container>(b, index) { }
 
-    using BaseFacade<T, Container>::operator->*;
+    using BaseFacade<Container>::operator->*;
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
     const auto& get() const noexcept { return this->get_base()->get_element(ptr, this->get_index()); }
@@ -109,16 +112,17 @@ public:
     }
 };
 
-template<typename T, typename Container>
-class Facade : public BaseFacade<T, Container>
+template<typename Container>
+class Facade : public BaseFacade<Container>
 {
+    using typename BaseFacade<Container>::T;
 public:
-    Facade( Container* b, size_t index) : BaseFacade<T, Container>(b, index) { }
+    Facade( Container* b, size_t index) : BaseFacade<Container>(b, index) { }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
     auto& get() const noexcept { return this->get_base()->get_element(ptr, this->get_index()); }
 
-    using BaseFacade<T, Container>::operator->*;
+    using BaseFacade<Container>::operator->*;
 
     template<typename R>
     R& operator->*(R T::* field) const noexcept { return this->get_base()->get_element(field, this->get_index()); }
@@ -136,14 +140,16 @@ public:
     }
 };
 
-template<typename T, typename ContainerT>
+template<typename T, template <typename> class Container>
 class AoSRandomAccessContainer : Traits<T>
 {
-    friend class BaseFacade<T, AoSRandomAccessContainer>;
-    friend class Facade<T, AoSRandomAccessContainer>;
-    friend class ConstFacade<T, AoSRandomAccessContainer>;
+    friend class BaseFacade<AoSRandomAccessContainer>;
+    friend class Facade<AoSRandomAccessContainer>;
+    friend class ConstFacade<AoSRandomAccessContainer>;
 
 public:
+    using value_type = T;
+
     auto size() const noexcept { return storage.size(); }
     bool empty() const noexcept { return storage.empty(); }
 
@@ -164,31 +170,43 @@ protected:
         return storage[index].*member;
     }
 
-    mutable ContainerT storage;
+    mutable Container<T> storage;
 };
 
-template<typename T, typename ContainerT>
+template<typename T, template <typename> class Container>
 class SoARandomAccessContainer : Traits<T>
 {
-    using Indices = typename Traits<T>::Indices;
-    friend class BaseFacade<T, SoARandomAccessContainer>;
-    friend class Facade<T, SoARandomAccessContainer>;
-    friend class ConstFacade<T, SoARandomAccessContainer>;
+    using typename Traits<T>::AsTypeList;
+    using Indices = typename AsTypeList::Indices;
+
+    template<typename ... TT>
+    struct tupilzer;
+
+    template<typename ... TT>
+    struct tupilzer<type_list_ns::type_list<TT...>>
+    {
+        using type = std::tuple<Container<TT>...>;
+    };
+
+    friend class BaseFacade<SoARandomAccessContainer>;
+    friend class Facade<SoARandomAccessContainer>;
+    friend class ConstFacade<SoARandomAccessContainer>;
 
 public:
+    using value_type = T;
+
     auto size() const noexcept { return std::get<0>(storage).size(); }
     bool empty() const noexcept { return std::get<0>(storage).empty(); }
-    
+
 protected:
     T aggregate(size_t index) const noexcept { return aggregate(index, Indices{}); }
     void dissipate(const T& rhs, size_t index) const noexcept  { dissipate(rhs, index, Indices{}); }
     void dissipate(T&& rhs, size_t index) const noexcept { dissipate(std::move(rhs), index, Indices{}); }
     void replicate(const T& value, size_t start, size_t end) { replicate(value, start, end, Indices{}); }
 
-    mutable ContainerT storage;
+    mutable typename tupilzer<AsTypeList>::type storage;
 
 private:
-
     template<typename R, size_t I>
     R* get_data_ptr_impl(size_t index) const
     {
@@ -203,7 +221,7 @@ private:
     }
 
     template<typename R>
-    R* get_data_ptr(size_t index) const { return get_data_ptr_impl<R, Traits<T>::members_count>(index); }
+    R* get_data_ptr(size_t index) const { return get_data_ptr_impl<R, AsTypeList::size>(index); }
 
     template<typename R>
     constexpr R& get_element(R T::* member, size_t index) const noexcept
@@ -217,8 +235,6 @@ private:
     template<size_t N, typename R>
     void replicate(const R& value, size_t start, size_t end)
     {
-        // It sounds ridiculous, but there is only one for-loop in the entire header
-        // That should be optimized with vectors or 'rep stos'
         for (size_t i = start; i < end; ++i)
             get_element<N>(i) = value;
     }
@@ -248,12 +264,12 @@ private:
     }
 };
 
-template<typename T, typename BaseContainer>
+template<typename BaseContainer>
 class RandomAccessContainer : public BaseContainer
 {
-    using MyBaseFacade  = BaseFacade<T, BaseContainer>;
-    using MyFacade      = Facade<T, BaseContainer>;
-    using MyConstFacade = ConstFacade<T, BaseContainer>;
+    using MyBaseFacade  = BaseFacade<BaseContainer>;
+    using MyFacade      = Facade<BaseContainer>;
+    using MyConstFacade = ConstFacade<BaseContainer>;
 public:
     auto operator[](size_t index) noexcept { return MyFacade{ this, index}; }
     auto operator[](size_t index) const noexcept { return MyConstFacade{ this, index}; }
@@ -314,8 +330,34 @@ private:
     }
 };
 
-template<typename T, typename Allocator = std::allocator<T>>
-class AoSVector : public RandomAccessContainer<T, AoSRandomAccessContainer<T, std::vector<T, Allocator>>>
+template<typename T, size_t N, typename Base>
+class BaseArray : public Base
+{
+public:
+    BaseArray() = default;
+    void fill(const T& value) { this->replicate( value, 0, N); }
+};
+
+template<size_t N>
+struct ArrayBinder
+{
+    template<typename T> using type = std::array<T, N>;
+};
+
+template<typename T, size_t N>
+using AoSArray = BaseArray<T, N, RandomAccessContainer<AoSRandomAccessContainer<T, ArrayBinder<N>::template type>>>;
+
+template<typename T, size_t N>
+using SoAArray = BaseArray<T, N, RandomAccessContainer<SoARandomAccessContainer<T, ArrayBinder<N>::template type>>>;
+
+template<template <typename> typename Allocator>
+struct VectorBinder
+{
+    template<typename T> using type = std::vector<T, Allocator<T>>;
+};
+
+template<typename T, template <typename> typename Allocator = std::allocator>
+class AoSVector : public RandomAccessContainer<AoSRandomAccessContainer<T, VectorBinder<Allocator>::template type>>
 {
 public:
     AoSVector() { }
@@ -335,17 +377,8 @@ public:
     void assign(size_t count, const T& value) { this->storage.assign(count, value); }
 };
 
-template<typename T, size_t N>
-class AoSArray : public RandomAccessContainer<T, AoSRandomAccessContainer<T, std::array<T, N>>>
-{
-public:
-    AoSArray() = default;
-    explicit AoSArray(const T& value) { fill(value); }
-    void fill(const T& value) { this->storage.fill(value); }
-};
-
-template<typename T>
-class SoAVector : public RandomAccessContainer<T, SoARandomAccessContainer<T, containers::loophole_tuple_of_vectors<T>>>
+template<typename T, template <typename> typename Allocator = std::allocator>
+class SoAVector : public RandomAccessContainer<SoARandomAccessContainer<T, VectorBinder<Allocator>::template type>>
 {
 public:
     SoAVector() : SoAVector(0) { }
@@ -394,20 +427,6 @@ public:
     }
 private:
     void resize_memory(size_t s) { visitor::visit_all(this->storage, [s](auto& v){ v.resize(s); }); }
-};
-
-template<typename T, size_t N>
-class SoAArray : public RandomAccessContainer<T, SoARandomAccessContainer<T, containers::loophole_tuple_of_arrays<N, T>>>
-{
-public:
-    SoAArray()
-    {
-        if constexpr(!std::is_trivially_constructible_v<T>)
-            fill(T());
-    }
-
-    SoAArray(const T& value) { fill(value); }
-    void fill(const T& value) { this->replicate( value, 0, N); }
 };
 
 } // namespace aoaoaott

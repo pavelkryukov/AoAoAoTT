@@ -30,10 +30,13 @@
 
 namespace aoaoaott {
 
-namespace loophole_ns {
-    // Based on public domain code authored by Alexandr Poltavsky
-    // https://github.com/alexpolt/luple
-    template<typename... TT> struct type_list { static constexpr size_t size = sizeof...(TT); };
+namespace type_list_ns
+{
+    template<typename... TT> struct type_list {
+        static constexpr size_t size = sizeof...(TT);
+        static constexpr size_t sizeof_total = (sizeof(TT) + ...);
+        using Indices = std::make_index_sequence<size>;
+    };
     template<typename T, int N, int M = 0> struct tlist_get;
     template<int N, int M, typename T, typename... TT> struct tlist_get< type_list<T, TT...>, N, M > {
         static_assert(N < (int) sizeof...(TT)+1 + M, "type index out of bounds");
@@ -51,7 +54,12 @@ namespace loophole_ns {
     template<typename U, int N> struct tlist_get_n< type_list<>, U, N > {
         static const int value = -1;
     };
+} // namespace type_list_ns
 
+namespace loophole_ns
+{
+    // Based on public domain code authored by Alexandr Poltavsky
+    // https://github.com/alexpolt/luple
     /*
         tag<T,N> generates friend declarations and helps with overload resolution.
         There are two types: one with the auto return type, which is the way we read types later.
@@ -123,24 +131,12 @@ namespace loophole_ns {
 
     template<typename T, int... NN>
     struct loophole_type_list< T, std::integer_sequence<int, NN...> > {
-        using type = type_list< decltype(loophole(tag<T, NN>{}))... >;
+        using type = type_list_ns::type_list< decltype(loophole(tag<T, NN>{}))... >;
     };
 
     template<typename T>
     using as_type_list =
         typename loophole_type_list<T, std::make_integer_sequence<int, fields_number<T>(0)>>::type;
-
-    template<typename... TT>
-    static constexpr const size_t sizeof_type_list_n = (sizeof(TT) + ...);
-
-    template<typename ... TT>
-    static constexpr size_t sizeof_type_list(type_list<TT...>)
-    {
-        return sizeof_type_list_n<TT...>;
-    }
-
-    template<typename T>
-    static constexpr const size_t sizeof_type_elements = sizeof_type_list(as_type_list<T>());
 } // namespace loophole_ns
 
 namespace member_offset_helpers
@@ -154,7 +150,7 @@ namespace member_offset_helpers
         return reinterpret_cast<std::ptrdiff_t>(&(reinterpret_cast<T const volatile*>(NULL)->*member));
     }
 
-    template<typename T, size_t N> using NthMemberType = loophole_ns::tlist_get_t<loophole_ns::as_type_list<T>, N>;
+    template<typename T, size_t N> using NthMemberType = type_list_ns::tlist_get_t<loophole_ns::as_type_list<T>, N>;
 
     template<typename T, size_t N> constexpr std::ptrdiff_t nth_member_offset = sizeof(NthMemberType<T, N - 1>) + nth_member_offset<T, N - 1>;
     template<typename T> constexpr std::ptrdiff_t nth_member_offset<T, 0> = 0;
@@ -192,18 +188,6 @@ namespace member_offset_helpers
         return check_nth_member<loophole_ns::as_type_list<T>::size - 1>(member);
     }
 } // namespace member_offset_helpers
-
-namespace containers {
-    using namespace loophole_ns;
-
-    template<typename ... TT> using tuple_of_vectors = std::tuple<std::vector<std::remove_cv_t<TT>>...>;
-    template<typename ... TT> tuple_of_vectors<TT...> tuple_of_vectors_generator(type_list<TT...>);
-    template<typename T> using loophole_tuple_of_vectors = decltype(tuple_of_vectors_generator(as_type_list<T>()));
-
-    template<size_t N, typename ... TT> using tuple_of_arrays = std::tuple<std::array<std::remove_cv_t<TT>, N>...>;
-    template<size_t N, typename ... TT> tuple_of_arrays<N, TT...> tuple_of_arrays_generator(type_list<TT...>);
-    template<size_t N, typename T> using loophole_tuple_of_arrays = decltype(tuple_of_arrays_generator<N>(as_type_list<T>()));
-} // containers
 
 namespace visitor {
     template <size_t I, typename T, typename F>
