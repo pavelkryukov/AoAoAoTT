@@ -1,32 +1,11 @@
-/*
- * Copyright (c) 2019 Pavel I. Kryukov
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
+// Based on public domain code authored by Alexandr Poltavsky
+// https://github.com/alexpolt/luple
 
 #ifndef AO_AO_AO_TT_MAGIC
 #define AO_AO_AO_TT_MAGIC
 
-#include <array>
-#include <cassert>
-#include <tuple>
-#include <vector>
+#include <cstddef>
+#include <utility>
 
 namespace aoaoaott {
 
@@ -37,6 +16,13 @@ namespace type_list_ns
         static constexpr size_t sizeof_total = (sizeof(TT) + ...);
         using Indices = std::make_index_sequence<size>;
     };
+    
+    template<> struct type_list<> {
+        static constexpr size_t size = 0;
+        static constexpr size_t sizeof_total = 0;
+        using Indices = std::make_index_sequence<0>;
+    };
+
     template<typename T, int N, int M = 0> struct tlist_get;
     template<int N, int M, typename T, typename... TT> struct tlist_get< type_list<T, TT...>, N, M > {
         static_assert(N < (int) sizeof...(TT)+1 + M, "type index out of bounds");
@@ -54,12 +40,13 @@ namespace type_list_ns
     template<typename U, int N> struct tlist_get_n< type_list<>, U, N > {
         static const int value = -1;
     };
+ 
+    template<typename T, size_t ... Ns> type_list<tlist_get_t<T, Ns>...> trim_type_list_n(std::index_sequence<Ns...>);
+    template<typename T, size_t N> using trim_type_list = decltype(trim_type_list_n<T>(std::make_index_sequence<N>{}));
 } // namespace type_list_ns
 
 namespace loophole_ns
 {
-    // Based on public domain code authored by Alexandr Poltavsky
-    // https://github.com/alexpolt/luple
     /*
         tag<T,N> generates friend declarations and helps with overload resolution.
         There are two types: one with the auto return type, which is the way we read types later.
@@ -138,78 +125,6 @@ namespace loophole_ns
     using as_type_list =
         typename loophole_type_list<T, std::make_integer_sequence<int, fields_number<T>(0)>>::type;
 } // namespace loophole_ns
-
-namespace member_offset_helpers
-{
-    // This namespace contains core magic by Pavel Kryukov
-    // I'm pretty sure 95% of that code is UB
-    //
-    template<typename R, typename T>
-    static constexpr std::ptrdiff_t member_offset(R T::* member) noexcept
-    {
-        return reinterpret_cast<std::ptrdiff_t>(&(reinterpret_cast<T const volatile*>(NULL)->*member));
-    }
-
-    template<typename T, size_t N> using NthMemberType = type_list_ns::tlist_get_t<loophole_ns::as_type_list<T>, N>;
-
-    template<typename T, size_t N> constexpr std::ptrdiff_t nth_member_offset = sizeof(NthMemberType<T, N - 1>) + nth_member_offset<T, N - 1>;
-    template<typename T> constexpr std::ptrdiff_t nth_member_offset<T, 0> = 0;
-
-    template<typename T, size_t N> static const auto& get_nth_member(const T& value)
-    {
-        return *reinterpret_cast<const NthMemberType<T, N>*>(reinterpret_cast<const char*>(&value) + nth_member_offset<T, N>);
-    }
-
-    template<typename T, size_t N> static auto& get_nth_member(T& value)
-    {
-        return *reinterpret_cast<NthMemberType<T, N>*>(reinterpret_cast<char*>(&value) + nth_member_offset<T, N>);
-    }
-
-    template<size_t N, typename R, typename T>
-    constexpr bool is_nth_member(R T::* member) noexcept
-    {
-        return member_offset(member) == nth_member_offset<T, N>;
-    }
-
-    template<size_t N, typename R, typename T>
-    constexpr size_t check_nth_member(R T::* member) noexcept
-    {
-        if (is_nth_member<N>(member))
-            return N;
-        else if constexpr (N > 0)
-            return check_nth_member<N-1>(member);
-        else
-            return -1;
-    }
-
-    template<typename R, typename T>
-    constexpr size_t get_member_id(R T::* member) noexcept
-    {
-        return check_nth_member<loophole_ns::as_type_list<T>::size - 1>(member);
-    }
-} // namespace member_offset_helpers
-
-namespace visitor {
-    template <size_t I, typename T, typename F>
-    static void visit_all_impl(T& tup, F fun)
-    {
-        fun(std::get<I>(tup));
-        if constexpr (I > 0)
-            visit_all_impl<I - 1>(tup, fun);
-    }
-
-    template <typename F, typename... Ts>
-    void visit_all(std::tuple<Ts...> const& tup, F fun)
-    {
-        visit_all_impl<sizeof...(Ts) - 1>(tup, fun);
-    }
-
-    template <typename F, typename... Ts>
-    void visit_all(std::tuple<Ts...>& tup, F fun)
-    {
-        visit_all_impl<sizeof...(Ts) - 1>(tup, fun);
-    }
-} // visitor
 
 } // namespace aoaoaott
 

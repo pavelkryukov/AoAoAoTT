@@ -23,11 +23,38 @@
 #ifndef AO_AO_AO_TT
 #define AO_AO_AO_TT
 
-#include "magic.hpp"
+#include "loophole.hpp"
 
 #include <boost/iterator/iterator_facade.hpp>
 
+#include <array>
+#include <cassert>
+#include <tuple>
+#include <vector>
+
 namespace aoaoaott {
+
+namespace visitor {
+    template <size_t I, typename T, typename F>
+    static void visit_all_impl(T& tup, F fun)
+    {
+        fun(std::get<I>(tup));
+        if constexpr (I > 0)
+            visit_all_impl<I - 1>(tup, fun);
+    }
+
+    template <typename F, typename... Ts>
+    void visit_all(std::tuple<Ts...> const& tup, F fun)
+    {
+        visit_all_impl<sizeof...(Ts) - 1>(tup, fun);
+    }
+
+    template <typename F, typename... Ts>
+    void visit_all(std::tuple<Ts...>& tup, F fun)
+    {
+        visit_all_impl<sizeof...(Ts) - 1>(tup, fun);
+    }
+} // visitor
 
 template<typename T>
 class Traits
@@ -86,10 +113,10 @@ private:
     size_t index;
     struct object_mover
     {
-        const BaseFacade* const Facade;
+        const BaseFacade* const facade;
         T object;
-        explicit object_mover(const BaseFacade* Facade) : Facade(Facade), object(Facade->aggregate()) { }
-        ~object_mover() { Facade->get_base()->dissipate(std::move(object), Facade->get_index()); }
+        explicit object_mover(const BaseFacade* facade) : facade(facade), object(facade->aggregate()) { }
+        ~object_mover() { facade->get_base()->dissipate(std::move(object), facade->get_index()); }
     };
 };
 
@@ -103,12 +130,12 @@ public:
     using BaseFacade<Container>::operator->*;
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-    const auto& get() const noexcept { return this->get_base()->get_element(ptr, this->get_index()); }
+    const auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
 
     template<typename R>
     const R& operator->*(R T::* field) const noexcept
     {
-        return this->get_base()->get_element(field, this->get_index());
+        return this->get_base()->get_member(field, this->get_index());
     }
 };
 
@@ -120,12 +147,12 @@ public:
     Facade( Container* b, size_t index) : BaseFacade<Container>(b, index) { }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-    auto& get() const noexcept { return this->get_base()->get_element(ptr, this->get_index()); }
+    auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
 
     using BaseFacade<Container>::operator->*;
 
     template<typename R>
-    R& operator->*(R T::* field) const noexcept { return this->get_base()->get_element(field, this->get_index()); }
+    R& operator->*(R T::* field) const noexcept { return this->get_base()->get_member(field, this->get_index()); }
 
     void operator=(const T& rhs) const noexcept
     {
@@ -155,7 +182,7 @@ public:
 
 protected:
     T aggregate(size_t index) const noexcept { return storage[index]; }
-    void dissipate(const T& rhs, size_t index) const noexcept  { storage[index] = rhs; }
+    void dissipate(const T& rhs, size_t index) const noexcept { storage[index] = rhs; }
     void dissipate(T&& rhs, size_t index) const noexcept { storage[index] = std::move(rhs); }
 
     void replicate(const T& value, size_t start, size_t end)
@@ -165,7 +192,7 @@ protected:
     }
 
     template<typename R>
-    constexpr R& get_element(R T::* member, size_t index) const noexcept
+    constexpr R& get_member(R T::* member, size_t index) const noexcept
     {
         return storage[index].*member;
     }
@@ -180,13 +207,9 @@ class SoARandomAccessContainer : Traits<T>
     using Indices = typename AsTypeList::Indices;
 
     template<typename ... TT>
-    struct tupilzer;
+    static constexpr std::tuple<Container<TT>...> tupilzer(type_list_ns::type_list<TT...>);
 
-    template<typename ... TT>
-    struct tupilzer<type_list_ns::type_list<TT...>>
-    {
-        using type = std::tuple<Container<TT>...>;
-    };
+    using Storage = decltype(tupilzer(AsTypeList{}));
 
     friend class BaseFacade<SoARandomAccessContainer>;
     friend class Facade<SoARandomAccessContainer>;
@@ -204,46 +227,20 @@ protected:
     void dissipate(T&& rhs, size_t index) const noexcept { dissipate(std::move(rhs), index, Indices{}); }
     void replicate(const T& value, size_t start, size_t end) { replicate(value, start, end, Indices{}); }
 
-    mutable typename tupilzer<AsTypeList>::type storage;
+    template<typename R>
+    constexpr R& get_member(R T::* member, size_t index) const noexcept
+    {
+        return get_container(member)[index];
+    }
+
+    mutable Storage storage;
 
 private:
-    template<typename R, size_t I>
-    R* get_data_ptr_impl(size_t index) const
-    {
-        if constexpr (I == 0)
-            return nullptr;
-        else if constexpr(!std::is_same_v<typename std::tuple_element_t<I - 1, decltype(this->storage)>::value_type, R>)
-            return get_data_ptr_impl<R, I - 1>(index);
-        else if (index != I - 1)
-            return get_data_ptr_impl<R, I - 1>(index);
-        else
-            return std::get<I - 1>(this->storage).data();
-    }
-
-    template<typename R>
-    R* get_data_ptr(size_t index) const { return get_data_ptr_impl<R, AsTypeList::size>(index); }
-
-    template<typename R>
-    constexpr R& get_element(R T::* member, size_t index) const noexcept
-    {
-        return get_data_ptr<std::remove_cv_t<R>>(member_offset_helpers::get_member_id(member))[index];
-    }
-
-    template<size_t N>
-    constexpr auto& get_element(size_t index) const noexcept { return std::get<N>(this->storage)[index]; }
-
-    template<size_t N, typename R>
-    void replicate(const R& value, size_t start, size_t end)
-    {
-        for (size_t i = start; i < end; ++i)
-            get_element<N>(i) = value;
-    }
-
     template<size_t ... N>
     void dissipate(const T& src, size_t index, std::index_sequence<N...>)
         const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
-        std::tie(get_element<N>(index)...) = std::tie(member_offset_helpers::get_nth_member<T, N>(src)...);
+        std::tie(std::get<N>(storage)[index]...) = std::tie(extract_member<N>(src)...);
     }
 
     template<size_t ... N>
@@ -251,7 +248,7 @@ private:
         const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
         T result{};
-        std::tie(member_offset_helpers::get_nth_member<T, N>(result)...) = std::tie(get_element<N>(index)...);
+        std::tie(extract_member<N>(result)...) = std::tie(std::get<N>(storage)[index]...);
         return result;
     }
 
@@ -260,7 +257,60 @@ private:
         noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
         // Use comma operator to replicate the `replicate` function
-        ((void)replicate<N>(member_offset_helpers::get_nth_member<T, N>(src), start, end), ...);
+        ((void)replicate_member<N>(src, start, end), ...);
+    }
+
+    template<size_t N>
+    void replicate_member(const T& src, size_t start, size_t end)
+    {
+        const auto& value = extract_member<N>(src);
+        for (size_t i = start; i < end; ++i)
+            std::get<N>(storage)[i] = value;
+    }
+
+    template<typename R>
+    auto& get_container(R T::* member) const
+    {
+        return *get_container_impl<AsTypeList::size>(member);
+    }
+
+    // And now it's time for undefined behavior
+    template<size_t N>
+    static const constexpr size_t nth_member_offset = type_list_ns::trim_type_list<AsTypeList, N>::sizeof_total;
+
+    template<size_t I, typename R>
+    Container<std::remove_cv_t<R>>* get_container_impl(R T::* member) const
+    {
+        (void)member;
+        if constexpr (I != 0)
+            return nullptr;
+        else if constexpr(!std::is_same_v<type_list_ns::tlist_get_t<AsTypeList, I - 1>, std::remove_cv_t<R>>)
+            return get_container_impl<I - 1>(member);
+        else if (member_offset(member) == nth_member_offset<I - 1>)
+            return get_container_impl<I - 1>(member);
+        else
+            return &std::get<I - 1>(storage);
+    }
+
+    template<typename R>
+    static constexpr std::ptrdiff_t member_offset(R T::* member) noexcept
+    {
+        // http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0908r0.html
+        return reinterpret_cast<std::ptrdiff_t>(&(reinterpret_cast<T const volatile*>(NULL)->*member));
+    }
+
+    template<size_t N>
+    static constexpr const auto& extract_member(const T& value) noexcept
+    {
+        using R = type_list_ns::tlist_get_t<AsTypeList, N>;
+        return *reinterpret_cast<const R*>(reinterpret_cast<const char*>(&value) + nth_member_offset<N>);
+    }
+
+    template<size_t N>
+    static constexpr auto& extract_member(T& value) noexcept
+    {
+        using R = type_list_ns::tlist_get_t<AsTypeList, N>;
+        return *reinterpret_cast<R*>(reinterpret_cast<char*>(&value) + nth_member_offset<N>);
     }
 };
 
