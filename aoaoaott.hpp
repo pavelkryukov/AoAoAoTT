@@ -30,6 +30,16 @@
 namespace aoaoaott {
 
 template<typename T>
+class Traits
+{
+    static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
+    static_assert(sizeof(T) == loophole_ns::sizeof_type_elements<T>, "AoAoAoTT does not support types with padding bytes");
+protected:
+    static const constexpr size_t members_count = loophole_ns::as_type_list<T>::size;
+    using Indices = std::make_index_sequence<members_count>;
+};
+
+template<typename T>
 class AoSFacade : private T
 {
 public:
@@ -37,55 +47,28 @@ public:
     explicit AoSFacade(const T& value) : T(value) { }
     explicit AoSFacade(T&& value) : T(std::move(value)) { }
 
-    T& operator=(const T& rhs) noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
-    {
-        T::operator=(rhs);
-        return *this;
-    }
-
-    T& operator=(T&& rhs) noexcept(noexcept(std::is_nothrow_move_assignable_v<T>))
-    {
-        T::operator=(std::move(rhs));
-        return *this;
-    }
+    void operator=(const T& rhs) noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>)) { T::operator=(rhs); }
+    void operator=(T&& rhs) noexcept(noexcept(std::is_nothrow_move_assignable_v<T>)) { T::operator=(std::move(rhs)); }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-    const auto& get() const noexcept
-    {
-        return this->*ptr;
-    }
+    const auto& get() const noexcept { return this->*ptr; }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-    auto& get() noexcept
-    {
-        return this->*ptr;
-    }
+    auto& get() noexcept { return this->*ptr; }
 
     template<typename R>
-    R& operator->*(R T::* field) noexcept
-    {
-        return this->*field;
-    }
+    R& operator->*(R T::* field) noexcept { return this->*field; }
 
     template<typename R>
-    const R& operator->*(R T::* field) const noexcept
-    {
-        return this->*field;
-    }
+    const R& operator->*(R T::* field) const noexcept { return this->*field; }
 
     T aggregate() const noexcept { return *this; }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(ptr)>>, typename ... Args>
-    auto method(Args&& ... args) // noexcept?
-    {
-        return (this->*ptr)(std::forward<Args>(args)...);
-    }
+    auto method(Args&& ... args) /* noexcept? */ { return (this->*ptr)(std::forward<Args>(args)...); }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(ptr)>>, typename ... Args>
-    auto method(Args&& ... args) const // noexcept?
-    {
-        return (this->*ptr)(std::forward<Args>(args)...);
-    }
+    auto method(Args&& ... args) const /* noexcept? */ { return (this->*ptr)(std::forward<Args>(args)...); }
 
     template<typename R, typename ... Args>
     auto operator->*(R (T::* fun)(Args ...)) noexcept
@@ -105,7 +88,7 @@ public:
 };
 
 template<typename ContainerT>
-class AoSRandomAccessContainer
+class AoSRandomAccessContainer : Traits<typename ContainerT::value_type>
 {
 public:
     template<typename ... Args>
@@ -151,7 +134,6 @@ protected:
 template<typename T, typename Allocator = std::allocator<T>>
 class AoSVector : public AoSRandomAccessContainer<std::vector<AoSFacade<T>, Allocator>>
 {
-    static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
     using Base = AoSRandomAccessContainer<std::vector<AoSFacade<T>, Allocator>>;
 public:
     AoSVector() : AoSVector(0) { }
@@ -187,10 +169,7 @@ template<typename T, typename Container>
 class BaseSoAFacade
 {
 public:
-    T aggregate() const noexcept
-    {
-        return base->aggregate(this->get_index());
-    }
+    T aggregate() const noexcept { return base->aggregate(this->get_index()); }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(ptr)>>, typename ... Args>
     auto method(Args&& ... args) const // noexcept?
@@ -225,7 +204,7 @@ private:
         const BaseSoAFacade* const SoAFacade;
         T object;
         explicit object_mover(const BaseSoAFacade* SoAFacade) : SoAFacade(SoAFacade), object(SoAFacade->aggregate()) { }
-        ~object_mover() { SoAFacade->get_base()->move_object_mutable(std::move(object), SoAFacade->get_index()); }
+        ~object_mover() { SoAFacade->get_base()->dissipate(std::move(object), SoAFacade->get_index()); }
     };
 
 protected:
@@ -235,9 +214,7 @@ protected:
     constexpr const auto* get_base() const noexcept { return base; }
     void inc_index() noexcept { ++index; }
     void dec_index() noexcept { --index; }
-    void advance_index(size_t n) noexcept { index += n; }
-
-    template<typename Class, typename Type> static Type get_pointer_type(Type Class::*);
+    void advance_index(ptrdiff_t n) noexcept { index += n; }
 };
 
 template<typename T, typename Container>
@@ -249,10 +226,7 @@ public:
     using BaseSoAFacade<T, Container>::operator->*;
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-    const auto& get() const noexcept
-    {
-        return this->get_base()->get_start_pointer(ptr)[this->get_index()];
-    }
+    const auto& get() const noexcept { return this->get_base()->get_element(this->get_index()); }
 
     template<typename R>
     const R& operator->*(R T::* field) const noexcept
@@ -265,60 +239,51 @@ template<typename T, typename Container>
 class SoAFacade : public BaseSoAFacade<T, Container>
 {
 public:
-    SoAFacade( Container* b, size_t index) : BaseSoAFacade<T, Container>(b, index), mutable_base(b) { }
+    SoAFacade( Container* b, size_t index) : BaseSoAFacade<T, Container>(b, index) { }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-    auto& get() const noexcept
-    {
-        return mutable_base->get_start_pointer(ptr)[this->get_index()];
-    }
+    auto& get() const noexcept { return this->get_base()->get_element(this->get_index()); }
 
     using BaseSoAFacade<T, Container>::operator->*;
 
     template<typename R>
-    R& operator->*(R T::* field) const noexcept
-    {
-        return mutable_base->get_start_pointer(field)[this->get_index()];
-    }
+    R& operator->*(R T::* field) const noexcept { return this->get_base()->get_element(this->get_index()); }
 
     void operator=(const T& rhs) const noexcept
     {
         static_assert(std::is_copy_assignable_v<T>, "Object cannot be assigned because its copy assignment operator is implicitly deleted");
-        mutable_base->copy_object(rhs, this->get_index());
+        this->get_base()->dissipate(rhs, this->get_index());
     }
 
     void operator=(T&& rhs) const noexcept
     {
         static_assert(std::is_move_assignable_v<T>, "Object cannot be assigned because its move assignment operator is implicitly deleted");
-        mutable_base->move_object(std::move(rhs), this->get_index());
+        this->get_base()->dissipate(std::move(rhs), this->get_index());
     }
-
-private:
-    Container* mutable_base;
 };
 
 template<typename T, typename ContainerT>
-class SoARandomAccessContainer
+class SoARandomAccessContainer : Traits<T>
 {
 public:
-    auto operator[](size_t index) noexcept { return SoAFacade<T, SoARandomAccessContainer>{ this, index}; }
-    auto operator[](size_t index) const noexcept { return ConstSoAFacade<T, SoARandomAccessContainer>{ this, index}; }
+    using Indices     = typename Traits<T>::Indices;
+    using BaseFacade  = BaseSoAFacade<T, SoARandomAccessContainer>;
+    using Facade      = SoAFacade<T, SoARandomAccessContainer>;
+    using ConstFacade = ConstSoAFacade<T, SoARandomAccessContainer>;
+
+    auto operator[](size_t index) noexcept { return Facade{ this, index}; }
+    auto operator[](size_t index) const noexcept { return ConstFacade{ this, index}; }
 
     auto at(size_t index) { check_index(index); return operator[](index); }
     auto at(size_t index) const { check_index(index); return operator[](index); }
 
-    class iterator;
-
-    class const_iterator : public boost::iterator_facade<const_iterator,
-                                                         ConstSoAFacade<T, SoARandomAccessContainer> const,
-                                                         std::random_access_iterator_tag,
-                                                         const ConstSoAFacade<T, SoARandomAccessContainer>&>,
-                           private ConstSoAFacade<T, SoARandomAccessContainer>
+    class const_iterator : ConstFacade,
+        public boost::iterator_facade<const_iterator, ConstFacade const, std::random_access_iterator_tag, const ConstFacade&>
     {
         friend class SoARandomAccessContainer;
         friend class boost::iterator_core_access;
 
-        const_iterator(const SoARandomAccessContainer* base, size_t index) : ConstSoAFacade<T, SoARandomAccessContainer>(base, index) { }
+        const_iterator(const SoARandomAccessContainer* base, size_t index) : ConstFacade(base, index) { }
 
         const auto& dereference() const noexcept { return *this; }
         bool equal(const const_iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }
@@ -328,16 +293,13 @@ public:
         ptrdiff_t distance_to(const const_iterator& rhs) const noexcept { return rhs.get_index() - this->get_index(); }
     };
 
-    class iterator : public boost::iterator_facade<iterator,
-                                                   SoAFacade<T, SoARandomAccessContainer>,
-                                                   std::random_access_iterator_tag,
-                                                   const SoAFacade<T, SoARandomAccessContainer>&>,
-                     private SoAFacade<T, SoARandomAccessContainer>
+    class iterator : Facade,
+        public boost::iterator_facade<iterator, Facade, std::random_access_iterator_tag, const Facade&>
     {
         friend class SoARandomAccessContainer;
         friend class boost::iterator_core_access;
 
-        iterator(SoARandomAccessContainer* base, size_t index) : SoAFacade<T, SoARandomAccessContainer>(base, index) { }
+        iterator(SoARandomAccessContainer* base, size_t index) : Facade(base, index) { }
 
         const auto& dereference() const noexcept { return *this; }
         bool equal(const iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }
@@ -362,27 +324,44 @@ public:
 
     const auto back() const { auto tmp = end(); --tmp; return *tmp; }
     auto back() { auto tmp = end(); --tmp; return *tmp; }
+
 protected:
-    // Storage has to be mutable to keep mutable elements
+    T aggregate(size_t index) const noexcept { return aggregate(index, Indices{}); }
+    void dissipate(const T& rhs, size_t index) noexcept  { dissipate(rhs, index, Indices{}); }
+    void dissipate(T&& rhs, size_t index) const noexcept { dissipate(rhs, index, Indices{}); }
+    void replicate(const T& value, size_t start, size_t end) { replicate(value, start, end, Indices{}); }
+
     mutable ContainerT storage;
 
+private:
     friend class BaseSoAFacade<T, SoARandomAccessContainer>;
     friend class SoAFacade<T, SoARandomAccessContainer>;
     friend class ConstSoAFacade<T, SoARandomAccessContainer>;
 
-    using Indices = std::make_index_sequence<loophole_ns::as_type_list<T>::size>;
-    
-    template<typename R>
-    constexpr auto get_start_pointer(R T::* member) const noexcept
+    template<typename R, size_t I>
+    R* get_data_ptr_impl(size_t index) const
     {
-        return containers::get_data_ptr<std::remove_cv_t<R>>(this->storage, member_offset_helpers::get_member_id(member));
+        if constexpr (I == 0)
+            return nullptr;
+        else if constexpr(!std::is_same_v<typename std::tuple_element_t<I - 1, decltype(this->storage)>::value_type, R>)
+            return get_data_ptr_impl<R, I - 1>(index);
+        else if (index != I - 1)
+            return get_data_ptr_impl<R, I - 1>(index);
+        else
+            return std::get<I - 1>(this->storage()).data();
+    }
+
+    template<typename R>
+    R* get_data_ptr(size_t index) const { return get_data_ptr_impl<R, Traits<T>::members_count>(index); }
+
+    template<typename R>
+    constexpr R& get_element(R T::* member, size_t index) const noexcept
+    {
+        return get_data_ptr<std::remove_cv_t<R>>(member_offset_helpers::get_member_id(member))[index];
     }
 
     template<size_t N>
-    constexpr auto get_start_pointer() const noexcept
-    {
-        return std::get<N>(this->storage).data();
-    }
+    constexpr auto& get_element(size_t index) const noexcept { return std::get<N>(this->storage)[index]; }
 
     template<size_t N, typename R>
     void replicate(const R& value, size_t start, size_t end)
@@ -390,36 +369,14 @@ protected:
         // It sounds ridiculous, but there is only one for-loop in the entire header
         // That should be optimized with vectors or 'rep stos'
         for (size_t i = start; i < end; ++i)
-            std::get<N>(this->storage)[i] = value;
-    }
-
-    void copy_object(const T& rhs, size_t index) noexcept
-    {
-        dissipate(rhs, index, Indices{});
-    }
-
-    void move_object(T&& rhs, size_t index) noexcept
-    {
-        // Do not care about move semantics since we support only trivial structures so far
-        dissipate(rhs, index, Indices{});
-    }
-
-    void move_object_mutable(T&& rhs, size_t index) const noexcept
-    {
-        // Do not care about move semantics since we support only trivial structures so far
-        dissipate(rhs, index, Indices{});
-    }
-
-    T aggregate(size_t index) const noexcept
-    {
-        return aggregate(index, Indices{});
+            get_element(i) = value;
     }
 
     template<size_t ... N>
     void dissipate(const T& src, size_t index, std::index_sequence<N...>)
         const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
-        std::tie(get_start_pointer<N>()[index]...) = std::tie(member_offset_helpers::get_nth_member<T, N>(src)...);
+        std::tie(get_element<N>(index)...) = std::tie(member_offset_helpers::get_nth_member<T, N>(src)...);
     }
 
     template<size_t ... N>
@@ -427,7 +384,7 @@ protected:
         const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
         T result{};
-        std::tie(member_offset_helpers::get_nth_member<T, N>(result)...) = std::tie(get_start_pointer<N>()[index]...);
+        std::tie(member_offset_helpers::get_nth_member<T, N>(result)...) = std::tie(get_element<N>(index)...);
         return result;
     }
 
@@ -444,18 +401,11 @@ protected:
         if (index >= size())
             throw std::out_of_range("SoA container is out of range");
     }
-
-    void replicate(const T& value, size_t start, size_t end)
-    {
-        replicate(value, start, end, Indices{});
-    }
 };
 
 template<typename T>
 class SoAVector : public SoARandomAccessContainer<T, containers::loophole_tuple_of_vectors<T>>
 {
-    static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
-    static_assert(sizeof(T) == loophole_ns::sizeof_type_elements<T>, "AoAoAoTT does not support types with padding bytes");
 public:
     SoAVector() : SoAVector(0) { }
     explicit SoAVector(size_t s) { resize(s); }
@@ -471,20 +421,14 @@ public:
 
     void resize(size_t s, const T& value)
     {
-        size_t old_size = std::get<0>(this->storage).size();
+        size_t old_size = this->size();
         resize_memory(s);
         this->replicate( value, old_size, s);
     }
 
-    void reserve(size_t s)
-    {
-        visitor::visit_all(this->storage, [s](auto& v){ v.reserve(s); });
-    }
-
-    void shrink_to_fit()
-    {
-        visitor::visit_all(this->storage, [](auto& v){ v.shrink_to_fit(); });
-    }
+    auto capacity() const noexcept { return std::get<0>(this->storage).capacity(); }
+    void reserve(size_t s) { visitor::visit_all(this->storage, [s](auto& v){ v.reserve(s); }); }
+    void shrink_to_fit()   { visitor::visit_all(this->storage, [](auto& v){ v.shrink_to_fit(); }); }
 
     void assign(size_t s, const T& value)
     {
@@ -494,33 +438,26 @@ public:
             this->replicate( value, 0, s);
     }
 
-    auto capacity() const noexcept { return std::get<0>(this->storage).capacity(); }
-
     void push_back(const T& value)
     {
         auto s = this->size();
         resize_memory(s + 1);
-        this->copy_object(value, s);
+        this->dissipate(value, s);
     }
 
     void push_back(T&& value)
     {
         auto s = this->size();
         resize_memory(s + 1);
-        this->move_object(std::move(value), s);
+        this->dissipate(std::move(value), s);
     }
 private:
-    void resize_memory(size_t s)
-    {
-        visitor::visit_all(this->storage, [s](auto& v){ v.resize(s); });
-    }
+    void resize_memory(size_t s) { visitor::visit_all(this->storage, [s](auto& v){ v.resize(s); }); }
 };
 
 template<typename T, size_t N>
 class SoAArray : public SoARandomAccessContainer<T, containers::loophole_tuple_of_arrays<N, T>>
 {
-    static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable types");
-    static_assert(sizeof(T) == loophole_ns::sizeof_type_elements<T>, "AoAoAoTT does not support types with padding bytes");
 public:
     SoAArray()
     {
@@ -528,15 +465,8 @@ public:
             fill(T());
     }
 
-    SoAArray(const T& value)
-    {
-        fill(value);
-    }
-    
-    void fill(const T& value)
-    {
-        this->replicate( value, 0, N);
-    }
+    SoAArray(const T& value) { fill(value); }
+    void fill(const T& value) { this->replicate( value, 0, N); }
 };
 
 } // namespace aoaoaott
