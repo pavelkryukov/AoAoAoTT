@@ -302,7 +302,6 @@ TEST_CONTAINER_CASE("random access iterator")
     CHECK( storage.end() - it == 30 );
 }
 
-#if 0
 TEST_CONTAINER_CASE("reverse iterator")
 {
     VECTOR_CONTAINER<A> storage(10);
@@ -313,7 +312,6 @@ TEST_CONTAINER_CASE("reverse iterator")
         entry->*(&A::dum) = ++value;
     }
     size_t i = 0;
-    CHECK( &(*std::make_reverse_iterator(storage.end())) == &*(storage.end() - 1) );
     for (auto it = storage.crbegin(); it != storage.crend(); ++it) {
         CHECK( it->get<&A::val>() == value - 3 * i - 2 );
         CHECK( it->get<&A::key>() == value - 3 * i - 1 );
@@ -321,7 +319,6 @@ TEST_CONTAINER_CASE("reverse iterator")
         ++i;
     }
 }
-#endif
 
 TEST_CONTAINER_CASE("const method")
 {

@@ -80,12 +80,14 @@ To sum up, let's enumerate **the basic principles** of AoAoAoTT design:
 Four containers are provided along with element facade objects and iterators: `SoAVector`, `AoSVector`, `SoAArray`, `SoAVector`;
 Both AoS and SoA container mimic well-known behavior of `std::vector` and `std::array`:
 
-* **Construction:** `AoS<Structure> storage(20), storage_init(20, Structure(42));`
+* **Construction and fill:** `AoS<Structure> storage(20), storage_init(20, Structure(42));`
 * **Assignment:** `storage[index] = construct_some_structure()`
-* **Random access iterators**
+* Full support of **random access iterators**
 
 Vector specific operations:
-* * **Resize:** `storage.resize(30, Structure(42))`
+* **Resize:** `storage.resize(30, Structure(42))`
+* **Push back:** `storage.push_back`
+* Capacity, reserve, and shrink_to_fit.
 
 However, access to elements is performed with magic operators:
 * **Constexpr element access:** `storage[index].get<&Structure::field>()`
@@ -129,10 +131,6 @@ However, you can use `std::array` without any problems:
 -       char array[128];
 +       std::array<char, 128> array;
 ```
-
-### No reverse iterators
-
-Their implementation is just not good enough at the moment.
 
 ### Padding bytes are not supported
 

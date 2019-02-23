@@ -26,6 +26,7 @@
 #include "loophole.hpp"
 
 #include <boost/iterator/iterator_facade.hpp>
+#include <boost/iterator/reverse_iterator.hpp>
 
 #include <array>
 #include <cassert>
@@ -365,6 +366,16 @@ public:
     auto end() const noexcept { return cend(); }
     auto begin() noexcept { return iterator{ this, 0}; }
     auto end() noexcept { return iterator{ this, this->size()}; }
+
+    using reverse_iterator = boost::reverse_iterator<iterator>;
+    using const_reverse_iterator = boost::reverse_iterator<const_iterator>;
+
+    auto crbegin() const noexcept { return const_reverse_iterator(cend()); }
+    auto crend() const noexcept { return const_reverse_iterator(cbegin()); }
+    auto rbegin() const noexcept { return crbegin(); }
+    auto rend() const noexcept { return crend(); }
+    auto rbegin() noexcept { return reverse_iterator(cend()); }
+    auto rend() noexcept { return reverse_iterator(begin()); } 
 
     const auto front() const { return *begin(); }
     auto front() { return *begin(); }
