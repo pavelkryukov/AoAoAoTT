@@ -41,7 +41,7 @@
 using namespace aoaoaott;
 
 template<typename R>
-const char* bold_cast(const R& ref)
+constexpr const char* bold_cast(const R& ref)
 {
     return reinterpret_cast<const char*>(&ref);
 }

@@ -82,7 +82,7 @@ public:
     }
 
     template<typename R, typename ... Args>
-    auto operator->*(R (T::* fun)(Args ...)) const noexcept
+    constexpr auto operator->*(R (T::* fun)(Args ...)) const noexcept
     {
         return [this, fun](Args&& ... args) {
             object_mover om(this);
@@ -91,7 +91,7 @@ public:
     }
 
     template<typename R, typename ... Args>
-    auto operator->*(R (T::* fun)(Args ...) const) const noexcept
+    constexpr auto operator->*(R (T::* fun)(Args ...) const) const noexcept
     {
         return [this, fun](Args&& ... args) {
             object_mover om(this);
@@ -125,7 +125,7 @@ class ConstFacade : public BaseFacade<Container>
 {
     using typename BaseFacade<Container>::T;
 public:
-    ConstFacade( const Container* b, size_t index) : BaseFacade<Container>(b, index) { }
+    constexpr ConstFacade( const Container* b, size_t index) : BaseFacade<Container>(b, index) { }
 
     using BaseFacade<Container>::operator->*;
 
@@ -133,7 +133,7 @@ public:
     const auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
 
     template<typename R>
-    const R& operator->*(R T::* field) const noexcept
+    constexpr const R& operator->*(R T::* field) const noexcept
     {
         return this->get_base()->get_member(field, this->get_index());
     }
@@ -144,7 +144,7 @@ class Facade : public BaseFacade<Container>
 {
     using typename BaseFacade<Container>::T;
 public:
-    Facade( Container* b, size_t index) : BaseFacade<Container>(b, index) { }
+    constexpr Facade( Container* b, size_t index) : BaseFacade<Container>(b, index) { }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
     auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
@@ -152,7 +152,7 @@ public:
     using BaseFacade<Container>::operator->*;
 
     template<typename R>
-    R& operator->*(R T::* field) const noexcept { return this->get_base()->get_member(field, this->get_index()); }
+    constexpr R& operator->*(R T::* field) const noexcept { return this->get_base()->get_member(field, this->get_index()); }
 
     void operator=(const T& rhs) const noexcept
     {
@@ -321,8 +321,8 @@ class RandomAccessContainer : public BaseContainer
     using MyFacade      = Facade<BaseContainer>;
     using MyConstFacade = ConstFacade<BaseContainer>;
 public:
-    auto operator[](size_t index) noexcept { return MyFacade{ this, index}; }
-    auto operator[](size_t index) const noexcept { return MyConstFacade{ this, index}; }
+    constexpr auto operator[](size_t index) noexcept { return MyFacade{ this, index}; }
+    constexpr auto operator[](size_t index) const noexcept { return MyConstFacade{ this, index}; }
 
     auto at(size_t index) { check_index(index); return operator[](index); }
     auto at(size_t index) const { check_index(index); return operator[](index); }
