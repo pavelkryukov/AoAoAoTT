@@ -56,7 +56,7 @@ TEST_CONTAINER_CASE("principal test")
     };
     static_assert(sizeof(Structure) != sizeof(int));
 
-    VECTOR_CONTAINER<Structure> storage( 11);
+    VECTOR_CONTAINER<Structure> storage;
     ptrdiff_t distance = bold_cast(storage[10]->*(&Structure::key)) - bold_cast(storage[0]->*(&Structure::key));
 
     // That is the only test dependent on container type
