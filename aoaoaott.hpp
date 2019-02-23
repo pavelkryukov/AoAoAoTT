@@ -130,7 +130,7 @@ public:
     using BaseFacade<Container>::operator->*;
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-    const auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
+    constexpr const auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
 
     template<typename R>
     constexpr const R& operator->*(R T::* field) const noexcept
@@ -147,7 +147,7 @@ public:
     constexpr Facade( Container* b, size_t index) : BaseFacade<Container>(b, index) { }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-    auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
+    constexpr auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
 
     using BaseFacade<Container>::operator->*;
 
