@@ -176,7 +176,6 @@ class AoSRandomAccessContainer : Traits<T>
 
 public:
     using value_type = T;
-
     auto size() const noexcept { return storage.size(); }
     bool empty() const noexcept { return storage.empty(); }
 
@@ -217,7 +216,6 @@ class SoARandomAccessContainer : Traits<T>
 
 public:
     using value_type = T;
-
     auto size() const noexcept { return std::get<0>(storage).size(); }
     bool empty() const noexcept { return std::get<0>(storage).empty(); }
 
@@ -279,7 +277,7 @@ private:
     static const constexpr size_t nth_member_offset = type_list_ns::trim_type_list<AsTypeList, N>::sizeof_total;
 
     template<size_t I, typename R>
-    Container<std::remove_cv_t<R>>* get_container_impl(R T::* member) const noexcept
+    constexpr Container<std::remove_cv_t<R>>* get_container_impl(R T::* member) const noexcept
     {
         (void)member;
         if constexpr (I == 0)
@@ -317,23 +315,25 @@ private:
 template<typename BaseContainer>
 class RandomAccessContainer : public BaseContainer
 {
-    using MyBaseFacade  = BaseFacade<BaseContainer>;
-    using MyFacade      = Facade<BaseContainer>;
-    using MyConstFacade = ConstFacade<BaseContainer>;
 public:
-    constexpr auto operator[](size_t index) noexcept { return MyFacade{ this, index}; }
-    constexpr auto operator[](size_t index) const noexcept { return MyConstFacade{ this, index}; }
+    using size_type = size_t;
+    using difference_type = ptrdiff_t;
+    using reference = Facade<BaseContainer>;
+    using const_reference = ConstFacade<BaseContainer>;
+
+    constexpr auto operator[](size_t index) noexcept { return reference{ this, index}; }
+    constexpr auto operator[](size_t index) const noexcept { return const_reference{ this, index}; }
 
     auto at(size_t index) { check_index(index); return operator[](index); }
     auto at(size_t index) const { check_index(index); return operator[](index); }
 
-    class const_iterator : MyConstFacade,
-        public boost::iterator_facade<const_iterator, MyConstFacade const, std::random_access_iterator_tag, const MyConstFacade&>
+    class const_iterator : const_reference,
+        public boost::iterator_facade<const_iterator, const_reference const, std::random_access_iterator_tag, const const_reference&>
     {
         friend class RandomAccessContainer;
         friend class boost::iterator_core_access;
 
-        const_iterator(const BaseContainer* base, size_t index) : MyConstFacade(base, index) { }
+        const_iterator(const BaseContainer* base, size_t index) : const_reference(base, index) { }
 
         const auto& dereference() const noexcept { return *this; }
         bool equal(const const_iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }
@@ -343,13 +343,13 @@ public:
         ptrdiff_t distance_to(const const_iterator& rhs) const noexcept { return rhs.get_index() - this->get_index(); }
     };
 
-    class iterator : MyFacade,
-        public boost::iterator_facade<iterator, MyFacade, std::random_access_iterator_tag, const MyFacade&>
+    class iterator : reference,
+        public boost::iterator_facade<iterator, reference, std::random_access_iterator_tag, const reference&>
     {
         friend class RandomAccessContainer;
         friend class boost::iterator_core_access;
 
-        iterator(BaseContainer* base, size_t index) : MyFacade(base, index) { }
+        iterator(BaseContainer* base, size_t index) : reference(base, index) { }
 
         const auto& dereference() const noexcept { return *this; }
         bool equal(const iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }

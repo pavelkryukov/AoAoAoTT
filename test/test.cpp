@@ -72,6 +72,14 @@ struct A {
     int dum;
 };
 
+/*
+static const constexpr ARRAY_CONTAINER<A, 11> array = {};
+static const constexpr size_t distance = bold_cast(array[10].get<&A::key>()) - bold_cast(array[0].get<&A::key>());
+static_assert(std::is_same_v<decltype(array), AoSArray<A, 11>>
+                ? distance == 10 * sizeof(A)
+                : distance == 10 * sizeof(int));
+*/
+
 TEST_CONTAINER_CASE("initialize and r/w")
 {
     VECTOR_CONTAINER<A> storage( 10);
