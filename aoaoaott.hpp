@@ -286,7 +286,7 @@ private:
             return nullptr;
         else if constexpr(!std::is_same_v<type_list_ns::tlist_get_t<AsTypeList, I - 1>, std::remove_cv_t<R>>)
             return get_container_impl<I - 1>(member);
-        else if (member_offset(member) == nth_member_offset<I - 1>)
+        else if (member_offset(member) != nth_member_offset<I - 1>)
             return get_container_impl<I - 1>(member);
         else
             return &std::get<I - 1>(storage);
