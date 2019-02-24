@@ -21,93 +21,81 @@
  */
 
 #include <benchmark/benchmark.h>
-#include "../AoAoAoTT/aoaoaott.hpp"
+#include "../aoaoaott.hpp"
+
+#include <memory>
+#include <random>
 
 struct A
 {
-    double x = 0.;
-    double y = 1.;
-    double z = 2.;
+    int x;
+    int y;
+    int z;
+    int w;
 };
 
 enum class Type { AoSVector, SoAVector, AoSArray, SoAArray };
-
-template<Type t>
-auto get_prepared_container();
+static const constexpr size_t CAPACITY = 8ull << 24ull;
+template<Type t> auto get_prepared_container();
 
 template<>
 auto get_prepared_container<Type::AoSVector>()
 {
-    return aoaoaott::AoSVector<A>(140000);
+    static auto ptr = std::make_shared<aoaoaott::AoSVector<A>>(CAPACITY);
+    return ptr;
 }
 
 template<>
 auto get_prepared_container<Type::SoAVector>()
 {
-    return aoaoaott::SoAVector<A>(140000);
+    static auto ptr = std::make_shared<aoaoaott::SoAVector<A>>(CAPACITY);
+    return ptr;
 }
 
 template<>
 auto get_prepared_container<Type::AoSArray>()
 {
-    return aoaoaott::AoSArray<A, 140000>();
+    static auto ptr = std::make_shared<aoaoaott::AoSArray<A, CAPACITY>>();
+    return ptr;
 }
 
 template<>
 auto get_prepared_container<Type::SoAArray>()
 {
-    return aoaoaott::SoAArray<A, 140000>();
+    static auto ptr = std::make_shared<aoaoaott::SoAArray<A, CAPACITY>>();
+    return ptr;
 }
-
-#if 0
+    
 template<Type t>
-static void BM_Assign_OnlyOneMember(benchmark::State& state)
+static void SwapXandZFromDifferentSides(benchmark::State& state)
 {
     auto storage = get_prepared_container<t>();
-    for (auto _ : state) {
-        size_t max = state.range(0);
-        for (size_t i = 0; i < max; ++i)
-            storage[i]->*(&A::x) = 3.1415926;
-    }
+    auto max = state.range(0);
+    for (auto _ : state)
+        for (int i = 0; i < max; ++i)
+            std::swap((*storage)[i]->*(&A::x), (*storage)[max - i - 1]->*(&A::z));
 }
-
-BENCHMARK_TEMPLATE(BM_Assign_OnlyOneMember, Type::AoSArray)->Range(8, 8<<10);
-BENCHMARK_TEMPLATE(BM_Assign_OnlyOneMember, Type::SoAArray)->Range(8, 8<<10);
-BENCHMARK_TEMPLATE(BM_Assign_OnlyOneMember, Type::AoSVector)->Range(8, 8<<10);
-BENCHMARK_TEMPLATE(BM_Assign_OnlyOneMember, Type::SoAVector)->Range(8, 8<<10);
 
 template<Type t>
-static void BM_Assign_Altogether(benchmark::State& state)
+static void AccessRandomElement(benchmark::State& state)
 {
     auto storage = get_prepared_container<t>();
-    for (auto _ : state) {
-        size_t max = state.range(0);
-        for (size_t i = 0; i < max; ++i)
-            storage[i] = A{3.14, 2.78, 1.68};
-    }
+    auto max = state.range(0);
+    std::random_device rd;
+    std::mt19937 mt(rd());
+    std::uniform_int_distribution<int> dist(0, max);
+
+    for (auto _ : state)
+        for (int j = 0; j < max; ++j) {
+            auto i = dist(mt);
+            (*storage)[i]->*(&A::w) += (*storage)[i]->*(&A::x) * ((*storage)[i]->*(&A::y) - (*storage)[i]->*(&A::z));
+        }
 }
 
-BENCHMARK_TEMPLATE(BM_Assign_Altogether, Type::AoSArray)->Range(8, 8<<10);
-BENCHMARK_TEMPLATE(BM_Assign_Altogether, Type::SoAArray)->Range(8, 8<<10);
-BENCHMARK_TEMPLATE(BM_Assign_Altogether, Type::AoSVector)->Range(8, 8<<10);
-BENCHMARK_TEMPLATE(BM_Assign_Altogether, Type::SoAVector)->Range(8, 8<<10);
-#endif
+BENCHMARK_TEMPLATE(SwapXandZFromDifferentSides, Type::AoSArray)->Range(8, CAPACITY);
+BENCHMARK_TEMPLATE(SwapXandZFromDifferentSides, Type::SoAArray)->Range(8, CAPACITY);
 
-template<Type t>
-static void BM_Swap_X_and_Z(benchmark::State& state)
-{
-    auto storage = get_prepared_container<t>();
-    for (auto _ : state) {
-        size_t max = state.range(0);
-        for (size_t i = 0; i < max; ++i)
-            std::swap(storage[i]->*(&A::x), storage[max - i]->*(&A::z));
-    }
-}
-
-BENCHMARK_TEMPLATE(BM_Swap_X_and_Z, Type::AoSArray)->Range(8, 8<<14);
-BENCHMARK_TEMPLATE(BM_Swap_X_and_Z, Type::SoAArray)->Range(8, 8<<14);
-BENCHMARK_TEMPLATE(BM_Swap_X_and_Z, Type::AoSVector)->Range(8, 8<<14);
-BENCHMARK_TEMPLATE(BM_Swap_X_and_Z, Type::SoAVector)->Range(8, 8<<14);
-
+BENCHMARK_TEMPLATE(AccessRandomElement, Type::AoSArray)->Range(8, CAPACITY / 8);
+BENCHMARK_TEMPLATE(AccessRandomElement, Type::SoAArray)->Range(8, CAPACITY / 8);
 
 BENCHMARK_MAIN();
