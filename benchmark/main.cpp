@@ -24,7 +24,6 @@
 #include "../aoaoaott.hpp"
 
 #include <memory>
-#include <random>
 
 struct A
 {
@@ -34,68 +33,29 @@ struct A
     int w;
 };
 
-enum class Type { AoSVector, SoAVector, AoSArray, SoAArray };
 static const constexpr size_t CAPACITY = 8ull << 24ull;
-template<Type t> auto get_prepared_container();
+static const constexpr size_t MAX_STRIDE = 16 * 64 / sizeof(int);
+static const constexpr size_t ITERATIONS = CAPACITY / MAX_STRIDE;
 
-template<>
-auto get_prepared_container<Type::AoSVector>()
+template<template<typename, size_t> typename Container>
+auto get_prepared_container()
 {
-    static auto ptr = std::make_shared<aoaoaott::AoSVector<A>>(CAPACITY);
+    static auto ptr = std::make_shared<Container<A, CAPACITY>>();
     return ptr;
 }
 
-template<>
-auto get_prepared_container<Type::SoAVector>()
+template<template<typename, size_t> typename Container>
+static void StridedAccess(benchmark::State& state)
 {
-    static auto ptr = std::make_shared<aoaoaott::SoAVector<A>>(CAPACITY);
-    return ptr;
-}
-
-template<>
-auto get_prepared_container<Type::AoSArray>()
-{
-    static auto ptr = std::make_shared<aoaoaott::AoSArray<A, CAPACITY>>();
-    return ptr;
-}
-
-template<>
-auto get_prepared_container<Type::SoAArray>()
-{
-    static auto ptr = std::make_shared<aoaoaott::SoAArray<A, CAPACITY>>();
-    return ptr;
-}
-    
-template<Type t>
-static void SwapXandZFromDifferentSides(benchmark::State& state)
-{
-    auto storage = get_prepared_container<t>();
-    auto max = state.range(0);
+    auto storage = get_prepared_container<Container>();
+    size_t stride = state.range(0);
     for (auto _ : state)
-        for (int i = 0; i < max; ++i)
-            std::swap((*storage)[i]->*(&A::x), (*storage)[max - i - 1]->*(&A::z));
+        for (size_t j = 0, i = 0; j < ITERATIONS; ++j, i += stride)
+            (*storage)[i]->*(&A::x) += std::max({(*storage)[i]->*(&A::x), (*storage)[i]->*(&A::y), (*storage)[i]->*(&A::z)});
+     state.SetBytesProcessed(int64_t(state.iterations()) * ITERATIONS * sizeof(int) * 3);
 }
 
-template<Type t>
-static void AccessRandomElement(benchmark::State& state)
-{
-    auto storage = get_prepared_container<t>();
-    auto max = state.range(0);
-    std::random_device rd;
-    std::mt19937 mt(rd());
-    std::uniform_int_distribution<int> dist(0, max);
-
-    for (auto _ : state)
-        for (int j = 0; j < max; ++j) {
-            auto i = dist(mt);
-            (*storage)[i]->*(&A::w) += (*storage)[i]->*(&A::x) * ((*storage)[i]->*(&A::y) - (*storage)[i]->*(&A::z));
-        }
-}
-
-BENCHMARK_TEMPLATE(SwapXandZFromDifferentSides, Type::AoSArray)->Range(8, CAPACITY);
-BENCHMARK_TEMPLATE(SwapXandZFromDifferentSides, Type::SoAArray)->Range(8, CAPACITY);
-
-BENCHMARK_TEMPLATE(AccessRandomElement, Type::AoSArray)->Range(8, CAPACITY / 8);
-BENCHMARK_TEMPLATE(AccessRandomElement, Type::SoAArray)->Range(8, CAPACITY / 8);
+BENCHMARK_TEMPLATE(StridedAccess, aoaoaott::AoSArray)->RangeMultiplier(2)->Range(1, MAX_STRIDE);
+BENCHMARK_TEMPLATE(StridedAccess, aoaoaott::SoAArray)->RangeMultiplier(2)->Range(1, MAX_STRIDE);
 
 BENCHMARK_MAIN();
