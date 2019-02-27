@@ -27,14 +27,14 @@
 
 struct A
 {
-    int x;
-    int y;
-    int z;
-    int w;
+    int32_t x;
+    int32_t y;
+    int32_t z;
+    int32_t w;
 };
 
-static const constexpr size_t CAPACITY = 8ull << 24ull;
-static const constexpr size_t MAX_STRIDE = 16 * 64 / sizeof(int);
+static const constexpr size_t CAPACITY = 1ull << 28ull;
+static const constexpr size_t MAX_STRIDE = 1024;
 static const constexpr size_t ITERATIONS = CAPACITY / MAX_STRIDE;
 
 template<template<typename, size_t> typename Container>
@@ -51,8 +51,8 @@ static void StridedAccess(benchmark::State& state)
     size_t stride = state.range(0);
     for (auto _ : state)
         for (size_t j = 0, i = 0; j < ITERATIONS; ++j, i += stride)
-            (*storage)[i]->*(&A::x) += std::max({(*storage)[i]->*(&A::x), (*storage)[i]->*(&A::y), (*storage)[i]->*(&A::z)});
-     state.SetBytesProcessed(int64_t(state.iterations()) * ITERATIONS * sizeof(int) * 3);
+            (*storage)[i]->*(&A::x) += (*storage)[i]->*(&A::y) << (*storage)[i]->*(&A::z);
+     state.SetBytesProcessed(int64_t(state.iterations()) * ITERATIONS * sizeof(int32_t) * 3);
 }
 
 BENCHMARK_TEMPLATE(StridedAccess, aoaoaott::AoSArray)->RangeMultiplier(2)->Range(1, MAX_STRIDE);
