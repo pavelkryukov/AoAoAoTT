@@ -4,26 +4,13 @@ notifications:
 language: c++
 sudo: false
 
-dist: xenial
-
-addons:
-  apt:
-    sources:
-    - ubuntu-toolchain-r-test
-    packages:
-    - libboost-dev
-    - libstdc++-7-dev
-    - g++-7
+dist: focal
 
 branches:
   only:
   - master
   
-compiler:
-  - g++-7
-
 script:
-  - if [ $CXX == g++ ] && [ "$TRAVIS_OS_NAME" == "linux" ]; then CXX=g++-7; fi
   - cd test
   - make CXXFLAGS='-fprofile-arcs -ftest-coverage -g' LDFLAGS='-lgcov --coverage' test
   - ./test
