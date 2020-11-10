@@ -6,6 +6,11 @@ sudo: false
 
 dist: focal
 
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+
 branches:
   only:
   - master
