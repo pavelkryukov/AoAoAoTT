@@ -132,10 +132,14 @@ However, you can use `std::array` without any problems:
 +       std::array<char, 128> array;
 ```
 
+### Inherited structures are not supported
+
+To decompose data structure, we use LoopHole mechanism which does not support inherited structures at the moment. The issue is reported to [alexpolt/luple#5](https://github.com/alexpolt/luple/issues/5).
+
 ### Padding bytes are not supported
 
 Since C++ reflection capabilities are very low, support of padding bytes cannot be provided at the moment.
-However, if people care about SoA data representation, on might consider they have already handled padding bytes wisely.
+However, if people care about SoA data representation, one might consider they have already handled padding bytes wisely.
 
 One more obvious case is empty structures: they have a single padding byte, and that's why they could not be stored to AoAoAoTT storages.
 
