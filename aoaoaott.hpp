@@ -43,7 +43,7 @@ namespace loophole_ns
 
     template<typename T, int... NN>
     struct loophole_type_list< T, std::integer_sequence<int, NN...> > {
-        using type = type_list_ns::type_list< boost::pfr::tuple_element_t<NN, T>... >;
+        using type = type_list_ns::type_list< std::remove_cv<boost::pfr::tuple_element_t<NN, T>>... >;
     };
 
     template<typename T>
