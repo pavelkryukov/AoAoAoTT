@@ -10,6 +10,8 @@ addons:
   apt:
     sources:
     - ubuntu-toolchain-r-test
+    packages:
+    - libboost-dev
 
 branches:
   only:
