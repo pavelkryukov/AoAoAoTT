@@ -302,12 +302,12 @@ private:
     static constexpr std::ptrdiff_t nth_member_offset()
     {
         if constexpr (N > 0)
-            return sizeof(std::remove_cv_t<boost::pfr::tuple_element_t<N - 1, T>>) + nth_member_offset<N - 1>();
+            return sizeof(decltype(boost::pfr::get<N - 1>(std::declval<T>()))) + nth_member_offset<N - 1>();
         else
             return 0;
     }
 
-    static_assert(sizeof(T) == nth_member_offset<AsTypeList::size>(), "AoAoAoTT does not support structures with padding bytes");
+    static_assert(sizeof(T) == nth_member_offset<boost::pfr::tuple_size_v<T>>(), "AoAoAoTT does not support structures with padding bytes");
 
     template<size_t I, typename R>
     constexpr Container<std::remove_cv_t<R>>* get_container_impl(R T::* member) const noexcept
