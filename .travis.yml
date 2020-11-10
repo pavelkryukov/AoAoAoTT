@@ -18,7 +18,7 @@ branches:
 script:
   - git clone https://github.com/boostorg/pfr
   - cd test
-  - make CXXFLAGS='-fprofile-arcs -ftest-coverage -g' LDFLAGS='-lgcov --coverage' BOOST_PFR_DIR=../pfr/include test
+  - make CXXFLAGS='-fprofile-arcs -ftest-coverage -g' LDFLAGS='-lgcov --coverage' BOOST_PFR_PATH=../pfr/include test
   - ./test
 
 after_success:
