@@ -23,8 +23,6 @@
 #ifndef AO_AO_AO_TT
 #define AO_AO_AO_TT
 
-#include "type_list.hpp"
-
 #include <boost/pfr.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/reverse_iterator.hpp>
@@ -38,12 +36,22 @@ namespace aoaoaott {
 
 namespace loophole_ns
 {
+    template<typename... TT> struct type_list {
+        static constexpr size_t size = sizeof...(TT);
+        using Indices = std::make_index_sequence<size>;
+    };
+    
+    template<> struct type_list<> {
+        static constexpr size_t size = 0;
+        using Indices = std::make_index_sequence<0>;
+    };
+
     template<typename T, typename U>
     struct loophole_type_list;
 
     template<typename T, int... NN>
     struct loophole_type_list< T, std::integer_sequence<int, NN...> > {
-        using type = type_list_ns::type_list< decltype(boost::pfr::get<NN>(std::declval<T>()))... >;
+        using type = type_list< std::remove_cv_t<boost::pfr::tuple_element_t<NN, T>>... >;
     };
 
     template<typename T>
@@ -81,7 +89,6 @@ protected:
     static_assert(!std::is_empty<T>::value, "AoAoAoTT does not support empty structures");
     static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable structures");
     using AsTypeList = loophole_ns::as_type_list<T>;
-    static_assert(sizeof(T) == AsTypeList::sizeof_total, "AoAoAoTT does not support structures with padding bytes");
 };
 
 template<typename Container>
@@ -224,7 +231,7 @@ class SoARandomAccessContainer : Traits<T>
     using Indices = typename AsTypeList::Indices;
 
     template<typename ... TT>
-    static constexpr std::tuple<Container<TT>...> tupilzer(type_list_ns::type_list<TT...>);
+    static constexpr std::tuple<Container<TT>...> tupilzer(loophole_ns::type_list<TT...>);
 
     using Storage = decltype(tupilzer(AsTypeList{}));
 
@@ -292,7 +299,15 @@ private:
 
     // And now it's time for undefined behavior
     template<size_t N>
-    static const constexpr size_t nth_member_offset = type_list_ns::trim_type_list<AsTypeList, N>::sizeof_total;
+    static constexpr std::ptrdiff_t nth_member_offset()
+    {
+        if constexpr (N > 0)
+            return sizeof(std::remove_cv_t<boost::pfr::tuple_element_t<N - 1, T>>) + nth_member_offset<N - 1>();
+        else
+            return 0;
+    }
+
+    static_assert(sizeof(T) == nth_member_offset<AsTypeList::size>(), "AoAoAoTT does not support structures with padding bytes");
 
     template<size_t I, typename R>
     constexpr Container<std::remove_cv_t<R>>* get_container_impl(R T::* member) const noexcept
@@ -300,9 +315,9 @@ private:
         (void)member;
         if constexpr (I == 0)
             return nullptr;
-        else if constexpr(!std::is_same_v<type_list_ns::tlist_get_t<AsTypeList, I - 1>, std::remove_cv_t<R>>)
+        else if constexpr(!std::is_same_v<std::remove_cv_t<boost::pfr::tuple_element_t<I - 1, T>>, std::remove_cv_t<R>>)
             return get_container_impl<I - 1>(member);
-        else if (member_offset(member) == nth_member_offset<I - 1>)
+        else if (member_offset(member) == nth_member_offset<I - 1>())
             return &std::get<I - 1>(storage);
         else
             return get_container_impl<I - 1>(member);
