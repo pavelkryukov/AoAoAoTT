@@ -36,13 +36,8 @@ namespace aoaoaott {
 
 namespace loophole_ns
 {
-    template<typename... TT> struct type_list {
-        using Indices = std::make_index_sequence<sizeof...(TT)>;
-    };
-    
-    template<> struct type_list<> {
-        using Indices = std::make_index_sequence<0>;
-    };
+    template<typename... TT> struct type_list {};
+    template<> struct type_list<> {};
 
     template<typename T, typename U>
     struct loophole_type_list;
@@ -228,7 +223,7 @@ template<typename T, template <typename> class Container>
 class SoARandomAccessContainer : Traits<T>
 {
     using typename Traits<T>::AsTypeList;
-    using Indices = typename AsTypeList::Indices;
+    using Indices = std::make_index_sequence<Traits<T>::tuple_size>;
 
     template<typename ... TT>
     static constexpr std::tuple<Container<TT>...> tupilzer(loophole_ns::type_list<TT...>);
