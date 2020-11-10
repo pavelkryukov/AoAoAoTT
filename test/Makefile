@@ -1,11 +1,11 @@
 catch.o: catch.cpp catch.hpp
 	$(CXX) $< -o $@ -c -Wall -Wextra -std=c++17 $(CXXFLAGS) -O0
 
-test-aos.o: test.cpp ../aoaoaott.hpp ../loophole.hpp
-	$(CXX) $< -o $@ -c -Wall -Wextra -std=c++17 $(CXXFLAGS) -O0 -DCONTAINER=AoS
+test-aos.o: test.cpp ../aoaoaott.hpp ../type_list.hpp
+	$(CXX) $< -o $@ -c -Wall -Wextra -std=c++17 $(CXXFLAGS) -O0 -DCONTAINER=AoS -I$(BOOST_PFR_PATH)
 
-test-soa.o: test.cpp ../aoaoaott.hpp ../loophole.hpp
-	$(CXX) $< -o $@ -c -Wall -Wextra -std=c++17 $(CXXFLAGS) -O0 -DCONTAINER=SoA
+test-soa.o: test.cpp ../aoaoaott.hpp ../type_list.hpp
+	$(CXX) $< -o $@ -c -Wall -Wextra -std=c++17 $(CXXFLAGS) -O0 -DCONTAINER=SoA -I$(BOOST_PFR_PATH)
 
 test: test-aos.o test-soa.o catch.o
 	$(CXX) $^ -o $@ $(LDFLAGS)

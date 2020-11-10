@@ -134,7 +134,7 @@ However, you can use `std::array` without any problems:
 
 ### Inherited structures are not supported
 
-To decompose data structure, we use LoopHole mechanism which does not support inherited structures at the moment. The issue is reported to [alexpolt/luple#5](https://github.com/alexpolt/luple/issues/5).
+To decompose data structure, we use PFR mechanism which does not support inherited structures at the moment. The issue is described in [PFR docs](https://apolukhin.github.io/magic_get/boost_pfr/limitations_and_configuration.html).
 
 ### Padding bytes are not supported
 
@@ -153,5 +153,6 @@ One more obvious case is empty structures: they have a single padding byte, and 
 ## Thanks
 
 * [Paolo Crosetto](https://github.com/crosetto) for his inspiring [SoAvsAoS implementation](https://github.com/crosetto/SoAvsAoS)
-* [Alexandr Poltavsky](https://github.com/alexpolt) for public domain [implementation of Loophole](https://github.com/alexpolt/luple)
+* [Alexandr Poltavsky](https://github.com/alexpolt) for public domain [implementation of Loophole and Type List](https://github.com/alexpolt/luple)
+* [Antony Polukhin](https://github.com/apolukhin) and contributors for [Boost.PRF](https://github.com/boostorg/pfr)
 * [Alexandr Titov](https://github.com/alexander-titov) for assistance with benchmarking
