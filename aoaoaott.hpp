@@ -23,8 +23,9 @@
 #ifndef AO_AO_AO_TT
 #define AO_AO_AO_TT
 
-#include "loophole.hpp"
+#include "type_list.hpp"
 
+#include <boost/pfr.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/reverse_iterator.hpp>
 
@@ -35,6 +36,22 @@
 
 namespace aoaoaott {
 
+namespace loophole_ns
+{
+    template<typename T, typename U>
+    struct loophole_type_list;
+
+    template<typename T, int... NN>
+    struct loophole_type_list< T, std::integer_sequence<int, NN...> > {
+        using type = type_list_ns::type_list< decltype(boost::pfr::get<NN>(std::declval<T>()))... >;
+    };
+
+    template<typename T>
+    using as_type_list =
+        typename loophole_type_list<T, std::make_integer_sequence<int, boost::pfr::tuple_size_v<T>>>::type;
+} // namespace loophole_ns
+
+  
 namespace visitor {
     template <size_t I, typename T, typename F>
     static void visit_all_impl(T& tup, F fun)
