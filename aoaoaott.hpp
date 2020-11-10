@@ -256,7 +256,7 @@ private:
     void dissipate(const T& src, size_t index, std::index_sequence<N...>)
         const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
-        std::tie(std::get<N>(storage)[index]...) = std::tie(extract_member<N>(src)...);
+        std::tie(std::get<N>(storage)[index]...) = std::tie(boost::pfr::get<N>(src)...);
     }
 
     template<size_t ... N>
@@ -264,7 +264,7 @@ private:
         const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
         T result{};
-        std::tie(extract_member<N>(result)...) = std::tie(std::get<N>(storage)[index]...);
+        std::tie(boost::pfr::get<N>(result)...) = std::tie(std::get<N>(storage)[index]...);
         return result;
     }
 
@@ -279,7 +279,7 @@ private:
     template<size_t N>
     void replicate_member(const T& src, size_t start, size_t end)
     {
-        const auto& value = extract_member<N>(src);
+        const auto& value = boost::pfr::get<N>(src);
         for (size_t i = start; i < end; ++i)
             std::get<N>(storage)[i] = value;
     }
@@ -313,18 +313,6 @@ private:
     {
         // http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0908r0.html
         return reinterpret_cast<std::ptrdiff_t>(&(reinterpret_cast<T const volatile*>(NULL)->*member));
-    }
-
-    template<size_t N>
-    static constexpr const auto& extract_member(const T& value) noexcept
-    {
-        return boost::pfr::get<N>( value);
-    }
-
-    template<size_t N>
-    static constexpr auto& extract_member(T& value) noexcept
-    {
-        return boost::pfr::get<N>( value);
     }
 };
 
