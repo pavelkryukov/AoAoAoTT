@@ -33,25 +33,6 @@
 #include <vector>
 
 namespace aoaoaott {
-
-namespace loophole_ns
-{
-    template<typename... TT> struct type_list {};
-    template<> struct type_list<> {};
-
-    template<typename T, typename U>
-    struct loophole_type_list;
-
-    template<typename T, int... NN>
-    struct loophole_type_list< T, std::integer_sequence<int, NN...> > {
-        using type = type_list< std::remove_cv_t<boost::pfr::tuple_element_t<NN, T>>... >;
-    };
-
-    template<typename T>
-    using as_type_list =
-        typename loophole_type_list<T, std::make_integer_sequence<int, boost::pfr::tuple_size_v<T>>>::type;
-} // namespace loophole_ns
-
   
 namespace visitor {
     template <size_t I, typename T, typename F>
@@ -82,8 +63,6 @@ protected:
     static_assert(!std::is_empty<T>::value, "AoAoAoTT does not support empty structures");
     static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable structures");
     static_assert(std::is_standard_layout<T>::value, "AoAoAoTT supports only standard layout structures");
-    using AsTypeList = loophole_ns::as_type_list<T>;
-    static constexpr size_t tuple_size = boost::pfr::tuple_size_v<T>;
 };
 
 template<typename Container>
@@ -222,11 +201,20 @@ protected:
 template<typename T, template <typename> class Container>
 class SoARandomAccessContainer : Traits<T>
 {
-    using typename Traits<T>::AsTypeList;
-    using Indices = std::make_index_sequence<Traits<T>::tuple_size>;
+    template<typename... TT> struct type_list {};
+
+    template<typename U> struct loophole_type_list;
+    template<int... NN> struct loophole_type_list<std::integer_sequence<int, NN...>>
+    {
+        using type = type_list< std::remove_cv_t<boost::pfr::tuple_element_t<NN, T>>... >;
+    };
+
+    static const constexpr size_t tuple_size = boost::pfr::tuple_size_v<T>;
+    using AsTypeList = typename loophole_type_list<std::make_integer_sequence<int, tuple_size>>::type;
+    using Indices = std::make_index_sequence<tuple_size>;
 
     template<typename ... TT>
-    static constexpr std::tuple<Container<TT>...> tupilzer(loophole_ns::type_list<TT...>);
+    static constexpr std::tuple<Container<TT>...> tupilzer(type_list<TT...>);
 
     using Storage = decltype(tupilzer(AsTypeList{}));
 
@@ -289,7 +277,7 @@ private:
     template<typename R>
     auto& get_container(R T::* member) const noexcept
     {
-        return *get_container_impl<Traits<T>::tuple_size>(member);
+        return *get_container_impl<tuple_size>(member);
     }
 
     template<size_t I, typename R>
@@ -315,7 +303,7 @@ private:
             return 0;
     }
 
-    static_assert(sizeof(T) == index_to_offset<Traits<T>::tuple_size>(), "AoAoAoTT does not support structures with padding bytes");
+    static_assert(sizeof(T) == index_to_offset<tuple_size>(), "AoAoAoTT does not support structures with padding bytes");
 
     // And now it's time for undefined behavior
     template<typename R>
