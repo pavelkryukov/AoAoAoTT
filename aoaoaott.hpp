@@ -318,15 +318,13 @@ private:
     template<size_t N>
     static constexpr const auto& extract_member(const T& value) noexcept
     {
-        using R = type_list_ns::tlist_get_t<AsTypeList, N>;
-        return *reinterpret_cast<const R*>(reinterpret_cast<const char*>(&value) + nth_member_offset<N>);
+        return boost::pfr::get<N>( value);
     }
 
     template<size_t N>
     static constexpr auto& extract_member(T& value) noexcept
     {
-        using R = type_list_ns::tlist_get_t<AsTypeList, N>;
-        return *reinterpret_cast<R*>(reinterpret_cast<char*>(&value) + nth_member_offset<N>);
+        return boost::pfr::get<N>( value);
     }
 };
 
