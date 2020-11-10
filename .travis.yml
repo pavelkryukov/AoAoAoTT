@@ -16,7 +16,6 @@ branches:
   - master
   
 script:
-  - if [ $CXX == g++ ] && [ "$TRAVIS_OS_NAME" == "linux" ]; then CXX=g++-7; fi
   - git clone https://github.com/boostorg/pfr
   - cd test
   - make CXXFLAGS='-fprofile-arcs -ftest-coverage -g' LDFLAGS='-lgcov --coverage' BOOST_PFR_DIR=../pfr/include test
