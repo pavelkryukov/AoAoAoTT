@@ -37,12 +37,10 @@ namespace aoaoaott {
 namespace loophole_ns
 {
     template<typename... TT> struct type_list {
-        static constexpr size_t size = sizeof...(TT);
-        using Indices = std::make_index_sequence<size>;
+        using Indices = std::make_index_sequence<sizeof...(TT)>;
     };
     
     template<> struct type_list<> {
-        static constexpr size_t size = 0;
         using Indices = std::make_index_sequence<0>;
     };
 
@@ -88,7 +86,9 @@ class Traits
 protected:
     static_assert(!std::is_empty<T>::value, "AoAoAoTT does not support empty structures");
     static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable structures");
+    static_assert(std::is_standard_layout<T>::value, "AoAoAoTT supports only standard layout structures");
     using AsTypeList = loophole_ns::as_type_list<T>;
+    static constexpr size_t tuple_size = boost::pfr::tuple_size_v<T>;
 };
 
 template<typename Container>
@@ -263,7 +263,7 @@ private:
     void dissipate(const T& src, size_t index, std::index_sequence<N...>)
         const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
-        std::tie(std::get<N>(storage)[index]...) = std::tie(boost::pfr::get<N>(src)...);
+        std::tie(std::get<N>(storage)[index]...) = boost::pfr::structure_tie(src);
     }
 
     template<size_t ... N>
@@ -271,7 +271,7 @@ private:
         const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
         T result{};
-        std::tie(boost::pfr::get<N>(result)...) = std::tie(std::get<N>(storage)[index]...);
+        boost::pfr::structure_tie(result) = std::tie(std::get<N>(storage)[index]...);
         return result;
     }
 
@@ -294,20 +294,8 @@ private:
     template<typename R>
     auto& get_container(R T::* member) const noexcept
     {
-        return *get_container_impl<AsTypeList::size>(member);
+        return *get_container_impl<Traits<T>::tuple_size>(member);
     }
-
-    // And now it's time for undefined behavior
-    template<size_t N>
-    static constexpr std::ptrdiff_t nth_member_offset()
-    {
-        if constexpr (N > 0)
-            return sizeof(decltype(boost::pfr::get<N - 1>(std::declval<T>()))) + nth_member_offset<N - 1>();
-        else
-            return 0;
-    }
-
-    static_assert(sizeof(T) == nth_member_offset<boost::pfr::tuple_size_v<T>>(), "AoAoAoTT does not support structures with padding bytes");
 
     template<size_t I, typename R>
     constexpr Container<std::remove_cv_t<R>>* get_container_impl(R T::* member) const noexcept
@@ -317,14 +305,26 @@ private:
             return nullptr;
         else if constexpr(!std::is_same_v<std::remove_cv_t<boost::pfr::tuple_element_t<I - 1, T>>, std::remove_cv_t<R>>)
             return get_container_impl<I - 1>(member);
-        else if (member_offset(member) == nth_member_offset<I - 1>())
+        else if (member_to_offset(member) == index_to_offset<I - 1>())
             return &std::get<I - 1>(storage);
         else
             return get_container_impl<I - 1>(member);
     }
 
+    template<size_t N>
+    static constexpr std::ptrdiff_t index_to_offset()
+    {
+        if constexpr (N > 0)
+            return sizeof(decltype(boost::pfr::get<N - 1>(std::declval<T>()))) + index_to_offset<N - 1>();
+        else
+            return 0;
+    }
+
+    static_assert(sizeof(T) == index_to_offset<Traits<T>::tuple_size>(), "AoAoAoTT does not support structures with padding bytes");
+
+    // And now it's time for undefined behavior
     template<typename R>
-    static constexpr std::ptrdiff_t member_offset(R T::* member) noexcept
+    static constexpr std::ptrdiff_t member_to_offset(R T::* member) noexcept
     {
         // http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0908r0.html
         return reinterpret_cast<std::ptrdiff_t>(&(reinterpret_cast<T const volatile*>(NULL)->*member));
