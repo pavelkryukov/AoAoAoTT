@@ -155,4 +155,5 @@ One more obvious case is empty structures: they have a single padding byte, and 
 * [Paolo Crosetto](https://github.com/crosetto) for his inspiring [SoAvsAoS implementation](https://github.com/crosetto/SoAvsAoS)
 * [Alexandr Poltavsky](https://github.com/alexpolt) for public domain [implementation of Loophole and Type List](https://github.com/alexpolt/luple)
 * [Antony Polukhin](https://github.com/apolukhin) and contributors for [Boost.PRF](https://github.com/boostorg/pfr)
+* [@Fuyutsubaki](https://github.com/Fuyutsubaki) for elegant pointer-to-member to index converter
 * [Alexandr Titov](https://github.com/alexander-titov) for assistance with benchmarking

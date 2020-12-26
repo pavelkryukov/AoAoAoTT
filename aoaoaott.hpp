@@ -288,29 +288,29 @@ private:
             return nullptr;
         else if constexpr(!std::is_same_v<std::remove_cv_t<boost::pfr::tuple_element_t<I - 1, T>>, std::remove_cv_t<R>>)
             return get_container_impl<I - 1>(member);
-        else if (member_to_offset(member) == index_to_offset<I - 1>())
+        else if (member_to_index(member) == I - 1)
             return &std::get<I - 1>(storage);
         else
             return get_container_impl<I - 1>(member);
     }
 
-    template<size_t N>
-    static constexpr std::ptrdiff_t index_to_offset()
-    {
-        if constexpr (N > 0)
-            return sizeof(decltype(boost::pfr::get<N - 1>(std::declval<T>()))) + index_to_offset<N - 1>();
-        else
-            return 0;
-    }
+    struct DelayConstruct {
+        static inline T value{};  // construct in runtime.  
+    };
 
-    static_assert(sizeof(T) == index_to_offset<tuple_size>(), "AoAoAoTT does not support structures with padding bytes");
-
-    // And now it's time for undefined behavior
+    // Taken from https://github.com/boostorg/pfr/issues/60 by Fuyutsubaki
     template<typename R>
-    static constexpr std::ptrdiff_t member_to_offset(R T::* member) noexcept
-    {
-        // http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0908r0.html
-        return reinterpret_cast<std::ptrdiff_t>(&(reinterpret_cast<T const volatile*>(NULL)->*member));
+    constexpr size_t member_to_index(R T::*mem_ptr) const noexcept {
+        auto &t = DelayConstruct::value;
+        return std::apply([&](const auto&...e) {
+            int idx = 0;
+            for (auto b : { static_cast<const void*>(&e) ... }) {
+                if (b == &(t.*mem_ptr))
+                    return idx;
+                idx += 1;
+            }
+            return -1;
+        }, boost::pfr::structure_tie(t));
     }
 };
 
