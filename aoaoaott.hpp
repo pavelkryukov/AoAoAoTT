@@ -306,15 +306,15 @@ private:
     }
 
     struct DelayConstruct {
-        static inline T value{};  // construct in runtime.  
+        static const inline T value{};  // construct in runtime.  
     };
 
     // Taken from https://github.com/boostorg/pfr/issues/60 by Fuyutsubaki
     template<typename R>
     constexpr size_t member_to_index(R T::* member) const noexcept
     {
-        auto &t = DelayConstruct::value;
-        return std::apply([&](const auto&...e) {
+        const auto &t = DelayConstruct::value;
+        return std::apply([&](const auto&... e) {
             size_t idx = 0;
             for (auto b : { static_cast<const void*>(&e) ... }) {
                 if (b == &(t.*member))
