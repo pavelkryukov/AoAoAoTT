@@ -218,6 +218,17 @@ class SoARandomAccessContainer : Traits<T>
 
     using Storage = decltype(tupilzer(AsTypeList{}));
 
+    template<typename ... TT>
+    static constexpr size_t sizeof_list(type_list<TT...>)
+    {
+        size_t result = 0;
+        for (auto e : { sizeof(TT) ... })
+            result += e;
+        return result;
+    }
+
+    static_assert(sizeof(T) == sizeof_list(AsTypeList{}), "AoAoAoTT does not support structures with padding bytes");
+
     friend class BaseFacade<SoARandomAccessContainer>;
     friend class Facade<SoARandomAccessContainer>;
     friend class ConstFacade<SoARandomAccessContainer>;
@@ -300,16 +311,17 @@ private:
 
     // Taken from https://github.com/boostorg/pfr/issues/60 by Fuyutsubaki
     template<typename R>
-    constexpr size_t member_to_index(R T::*mem_ptr) const noexcept {
+    constexpr size_t member_to_index(R T::* member) const noexcept
+    {
         auto &t = DelayConstruct::value;
         return std::apply([&](const auto&...e) {
-            int idx = 0;
+            size_t idx = 0;
             for (auto b : { static_cast<const void*>(&e) ... }) {
-                if (b == &(t.*mem_ptr))
+                if (b == &(t.*member))
                     return idx;
                 idx += 1;
             }
-            return -1;
+            return tuple_size;
         }, boost::pfr::structure_tie(t));
     }
 };
