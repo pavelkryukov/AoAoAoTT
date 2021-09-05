@@ -33,7 +33,7 @@ struct A
     int32_t w;
 };
 
-static const constexpr size_t CAPACITY = 1ull << 28ull;
+static const constexpr size_t CAPACITY = 1ull << 14ull;
 static const constexpr size_t MAX_STRIDE = 1024;
 static const constexpr size_t ITERATIONS = CAPACITY / MAX_STRIDE;
 
@@ -59,3 +59,4 @@ BENCHMARK_TEMPLATE(StridedAccess, aoaoaott::AoSArray)->RangeMultiplier(2)->Range
 BENCHMARK_TEMPLATE(StridedAccess, aoaoaott::SoAArray)->RangeMultiplier(2)->Range(1, MAX_STRIDE);
 
 BENCHMARK_MAIN();
+
