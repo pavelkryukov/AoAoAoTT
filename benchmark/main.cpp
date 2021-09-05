@@ -25,38 +25,57 @@
 
 #include <memory>
 
-struct A
+struct A12
 {
-    int32_t x;
-    int32_t y;
-    int32_t z;
-    int32_t w;
+    int32_t x, y, z;
 };
 
-static const constexpr size_t CAPACITY = 1ull << 14ull;
+struct A16
+{
+    int32_t x, y, z, w;
+};
+
+struct A32
+{
+    int32_t x, y, z, w, a, b, c, d;
+};
+
+struct A48
+{
+    int32_t x, y, z, w, a, b, c, d, e, f, g, h;
+};
+
+static const constexpr size_t CAPACITY = 1ull << 20ull;
 static const constexpr size_t MAX_STRIDE = 1024;
 static const constexpr size_t ITERATIONS = CAPACITY / MAX_STRIDE;
 
-template<template<typename, size_t> typename Container>
+template<template<typename, size_t> typename Container, typename A>
 auto get_prepared_container()
 {
     static auto ptr = std::make_shared<Container<A, CAPACITY>>();
     return ptr;
 }
 
-template<template<typename, size_t> typename Container>
+template<template<typename, size_t> typename Container, typename A>
 static void StridedAccess(benchmark::State& state)
 {
-    auto storage = get_prepared_container<Container>();
+    auto storage = get_prepared_container<Container, A>();
     size_t stride = state.range(0);
     for (auto _ : state)
         for (size_t j = 0, i = 0; j < ITERATIONS; ++j, i += stride)
             (*storage)[i]->*(&A::x) += (*storage)[i]->*(&A::y) << (*storage)[i]->*(&A::z);
-     state.SetBytesProcessed(int64_t(state.iterations()) * ITERATIONS * sizeof(int32_t) * 3);
+
+    state.SetBytesProcessed(int64_t(state.iterations()) * ITERATIONS * sizeof(int32_t) * 3);
 }
 
-BENCHMARK_TEMPLATE(StridedAccess, aoaoaott::AoSArray)->RangeMultiplier(2)->Range(1, MAX_STRIDE);
-BENCHMARK_TEMPLATE(StridedAccess, aoaoaott::SoAArray)->RangeMultiplier(2)->Range(1, MAX_STRIDE);
+BENCHMARK_TEMPLATE(StridedAccess, aoaoaott::AoSArray, A12)->RangeMultiplier(2)->Range(1, MAX_STRIDE);
+BENCHMARK_TEMPLATE(StridedAccess, aoaoaott::AoSArray, A16)->RangeMultiplier(2)->Range(1, MAX_STRIDE);
+BENCHMARK_TEMPLATE(StridedAccess, aoaoaott::AoSArray, A32)->RangeMultiplier(2)->Range(1, MAX_STRIDE);
+BENCHMARK_TEMPLATE(StridedAccess, aoaoaott::AoSArray, A48)->RangeMultiplier(2)->Range(1, MAX_STRIDE);
+BENCHMARK_TEMPLATE(StridedAccess, aoaoaott::SoAArray, A12)->RangeMultiplier(2)->Range(1, MAX_STRIDE);
+BENCHMARK_TEMPLATE(StridedAccess, aoaoaott::SoAArray, A16)->RangeMultiplier(2)->Range(1, MAX_STRIDE);
+BENCHMARK_TEMPLATE(StridedAccess, aoaoaott::SoAArray, A32)->RangeMultiplier(2)->Range(1, MAX_STRIDE);
+BENCHMARK_TEMPLATE(StridedAccess, aoaoaott::SoAArray, A48)->RangeMultiplier(2)->Range(1, MAX_STRIDE);
 
 BENCHMARK_MAIN();
 
