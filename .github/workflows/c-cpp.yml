@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -23,4 +23,18 @@ jobs:
       run: ./test
     - name: Codecov
       uses: codecov/codecov-action@v1.0.15
+
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Boost
+      run: sudo apt-get install libboost-dev
+    - name: Get Boost PFR
+      run: git clone https://github.com/boostorg/pfr
+    - name: Make test
+      working-directory: benchmark
+      run: cmake . -G Ninja -DBOOST_PFR_PATH=../pfr/include
+    - name: Build and run test
+      run: ninja code && ./code
   
