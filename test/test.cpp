@@ -243,6 +243,17 @@ TEST_CONTAINER_CASE("aggregate and run method")
     CHECK( storage[4]->*(&HasMethod::delon) == 44 );
 }
 
+TEST_CONTAINER_CASE("implicit aggregate")
+{
+    VECTOR_CONTAINER<HasMethod> storage( 10);
+    storage[4] = HasMethod{33, 44};
+    HasMethod x(storage[4]);
+    x.drink_double_bourbon();
+
+    CHECK( x.alain == 44 );
+    CHECK( x.delon == 33 );
+}
+
 TEST_CONTAINER_CASE("const iterator")
 {
     VECTOR_CONTAINER<A> storage(10, { 11, 12, 13});
