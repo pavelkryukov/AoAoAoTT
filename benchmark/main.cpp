@@ -35,47 +35,55 @@
 struct A12
 {
     int32_t x, y, z;
+    auto sum() const { return x + y + z; }
 };
 
 struct __attribute__ ((packed)) A13
 {
     int32_t x, y, z;
     int8_t w;
+    auto sum() const { return x + y + z + w; }
 };
 
 struct A16
 {
     int32_t x, y, z, w;
+    auto sum() const { return x + y + z + w; }
 };
 
 struct A32
 {
     A16 a;
     int32_t x, y, z, w;
+    auto sum() const { return x + y + z + w + a.sum(); }
 };
 
 struct A48
 {
     A32 a;
     int32_t x, y, z, w;
+    auto sum() const { return x + y + z + w + a.sum(); }
 };
 
 struct A64
 {
     A48 a;
     int32_t x, y, z, w;
+    auto sum() const { return x + y + z + w + a.sum(); }
 };
 
 struct A60
 {
     A48 a;
     int32_t x, y, z;
+    auto sum() const { return x + y + z + a.sum(); }
 };
 
 struct A68
 {
     A48 a;
     int32_t x, y, z, w, u;
+    auto sum() const { return x + y + z + w + u + a.sum(); }
 };
 
 struct A96
@@ -83,6 +91,7 @@ struct A96
     A64 a;
     A16 b;
     int32_t x, y, z, w;
+    auto sum() const { return x + y + z + w + a.sum() + b.sum(); }
 };
 
 struct A128
@@ -90,6 +99,7 @@ struct A128
     A64 a;
     A48 b;
     int32_t x, y, z, w;
+    auto sum() const { return x + y + z + w + a.sum() + b.sum(); }
 };
 
 ASSERT_SIZE(12);
@@ -124,11 +134,32 @@ static void Access12Bytes(benchmark::State& state)
         (*storage)[i] = A();
 
     assert(iterations <= storage->size());
-    for (auto _ : state)
-        for (size_t i = 0; i < iterations; ++i)
+    for (auto _ : state) {
+        for (size_t i = 0; i < iterations; ++i) {
 	    (*storage)[i]->*(&A::x) = (*storage)[i]->*(&A::y) << (*storage)[i]->*(&A::z);
+	}
+    }
 
     state.SetBytesProcessed(int64_t(state.iterations()) * iterations * sizeof(int32_t) * 3);
+}
+
+template<template<typename, size_t> typename Container, typename A>
+__attribute__((optimize("no-tree-vectorize")))
+static void AccessAllBytes(benchmark::State& state)
+{
+    auto storage = get_prepared_container<Container, A>();
+    const auto iterations = state.range(0) / sizeof(A);
+    for (size_t i = 0; i < iterations; ++i)
+        (*storage)[i] = A();
+
+    assert(iterations <= storage->size());
+    for (auto _ : state) {
+        for (size_t i = 0; i < iterations; ++i) {
+	    (*storage)[i]->*(&A::x) = (*storage)[i].aggregate().sum();
+	}
+    }
+
+    state.SetBytesProcessed(int64_t(state.iterations()) * iterations * sizeof(A));
 }
 
 template<typename T, size_t N>
@@ -142,8 +173,8 @@ BENCHMARK_TEMPLATE(Access12Bytes, SoA, A12)->RangeMultiplier(4)->Range(16 KB, 4 
 BENCHMARK_TEMPLATE(Access12Bytes, SoA, A16)->RangeMultiplier(4)->Range(16 KB, 4 MB);
 BENCHMARK_TEMPLATE(Access12Bytes, SoA, A32)->RangeMultiplier(4)->Range(16 KB, 4 MB);
 BENCHMARK_TEMPLATE(Access12Bytes, SoA, A48)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, SoA, A64)->RangeMultiplier(4)->Range(16 KB, 4 MB);
 BENCHMARK_TEMPLATE(Access12Bytes, SoA, A60)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(Access12Bytes, SoA, A64)->RangeMultiplier(4)->Range(16 KB, 4 MB);
 BENCHMARK_TEMPLATE(Access12Bytes, SoA, A68)->RangeMultiplier(4)->Range(16 KB, 4 MB);
 BENCHMARK_TEMPLATE(Access12Bytes, SoA, A96)->RangeMultiplier(4)->Range(16 KB, 4 MB);
 BENCHMARK_TEMPLATE(Access12Bytes, SoA, A128)->RangeMultiplier(4)->Range(16 KB, 4 MB);
@@ -153,11 +184,33 @@ BENCHMARK_TEMPLATE(Access12Bytes, AoS, A13)->RangeMultiplier(4)->Range(16 KB, 4 
 BENCHMARK_TEMPLATE(Access12Bytes, AoS, A16)->RangeMultiplier(4)->Range(16 KB, 4 MB);
 BENCHMARK_TEMPLATE(Access12Bytes, AoS, A32)->RangeMultiplier(4)->Range(16 KB, 4 MB);
 BENCHMARK_TEMPLATE(Access12Bytes, AoS, A48)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, AoS, A64)->RangeMultiplier(4)->Range(16 KB, 4 MB);
 BENCHMARK_TEMPLATE(Access12Bytes, AoS, A60)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(Access12Bytes, AoS, A64)->RangeMultiplier(4)->Range(16 KB, 4 MB);
 BENCHMARK_TEMPLATE(Access12Bytes, AoS, A68)->RangeMultiplier(4)->Range(16 KB, 4 MB);
 BENCHMARK_TEMPLATE(Access12Bytes, AoS, A96)->RangeMultiplier(4)->Range(16 KB, 4 MB);
 BENCHMARK_TEMPLATE(Access12Bytes, AoS, A128)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+
+BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A12)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+//BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A13)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A16)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A32)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A48)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A60)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A64)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A68)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A96)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A128)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+
+BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A12)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A13)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A16)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A32)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A48)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A60)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A64)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A68)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A96)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A128)->RangeMultiplier(4)->Range(16 KB, 4 MB);
 
 BENCHMARK_MAIN();
 
