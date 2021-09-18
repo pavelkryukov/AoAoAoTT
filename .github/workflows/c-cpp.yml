@@ -32,6 +32,8 @@ jobs:
       run: sudo apt-get install libboost-dev
     - name: Get Boost PFR
       run: git clone https://github.com/boostorg/pfr
+    - name: Install Benchmark
+      run: sudo apt-get install libbenchmark-dev
     - name: Make test
       working-directory: benchmark
       run: cmake -DBOOST_PFR_PATH=../pfr/include
