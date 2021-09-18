@@ -115,6 +115,7 @@ auto get_prepared_container()
 }
 
 template<template<typename, size_t> typename Container, typename A>
+__attribute__((optimize("no-tree-vectorize")))
 static void Access12Bytes(benchmark::State& state)
 {
     auto storage = get_prepared_container<Container, A>();
