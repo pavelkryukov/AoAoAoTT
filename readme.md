@@ -24,7 +24,6 @@ struct SomeDataStructure {
     std::array<char, 256> key;
     int value;
     int previous_value;
-    bool valid;
 };
 
 std::array<SomeDataStructure, 10000> storage;
@@ -81,18 +80,18 @@ Four containers are provided along with element facade objects and iterators: `S
 Both AoS and SoA container mimic well-known behavior of `std::vector` and `std::array`:
 
 * **Construction and fill:** `AoS<Structure> storage(20), storage_init(20, Structure(42));`
-* **Assignment:** `storage[index] = construct_some_structure()`
+* **Assignment LHS:** `storage[index] = construct_some_structure()`
+* **Assignment RHS:** `some_structure = storage[index]`
 * Full support of **random access iterators**
 
 Vector specific operations:
 * **Resize:** `storage.resize(30, Structure(42))`
 * **Push back:** `storage.push_back`
-* Capacity, reserve, and shrink_to_fit.
+* Capacity, reserve, and shrink-to-fit.
 
 However, access to elements is performed with magic operators:
 * **Constexpr element access:** `storage[index].get<&Structure::field>()`
 * **Elegant element access:** `storage[index]->*(&Structure::field)`
-* **Object aggregation:** `Structure s = storage[index].aggregate()`
 * **Aggregate and call a method:** `storage[index].method<&Structure::update>(param1, param2)`
 * **Elegant lambda call:** `(storage[index]->*(&Structure::update))(param1, param2)`
 
@@ -142,6 +141,14 @@ Since C++ reflection capabilities are very low, support of padding bytes cannot 
 However, if people care about SoA data representation, one might consider they have already handled padding bytes wisely.
 
 One more obvious case is empty structures: they have a single padding byte, and that's why they could not be stored to AoAoAoTT storages.
+
+### Packed structures are not supported
+
+It is a undocumented restriction of PFR.
+
+### Booleans are not supported in SoAVector
+
+As you may guess, it is a result of STL-incompliance of `std::vector<bool>`.
 
 ----
 ## Further reading

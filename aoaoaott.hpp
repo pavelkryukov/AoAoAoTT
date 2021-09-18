@@ -228,6 +228,15 @@ class SoARandomAccessContainer : Traits<T>
         return result;
     }
 
+    template<typename ... TT>
+    static constexpr bool check_bool(type_list<TT...>)
+    {
+	for (auto e : { std::is_same_v<TT, bool>... })
+	    if (e)
+	        return true;
+	return false;
+    }
+
     static_assert(sizeof(T) == sizeof_list(AsTypeList{}), "AoAoAoTT does not support structures with padding bytes");
 
     friend class BaseFacade<SoARandomAccessContainer>;
@@ -240,6 +249,8 @@ public:
     bool empty() const noexcept { return std::get<0>(storage).empty(); }
 
 protected:
+    static constexpr bool has_bool() { return check_bool(AsTypeList{}); }
+
     T aggregate(size_t index) const noexcept { return aggregate(index, Indices{}); }
     void dissipate(const T& rhs, size_t index) const noexcept  { dissipate(rhs, index, Indices{}); }
     void dissipate(T&& rhs, size_t index) const noexcept { dissipate(std::move(rhs), index, Indices{}); }
@@ -455,6 +466,8 @@ public:
 template<typename T, template <typename> typename Allocator = std::allocator>
 class SoAVector : public RandomAccessContainer<SoARandomAccessContainer<T, VectorBinder<Allocator>::template type>>
 {
+    using Base = RandomAccessContainer<SoARandomAccessContainer<T, VectorBinder<Allocator>::template type>>;
+    static_assert(!Base::has_bool(), "AoAoAoTT does not support vectors with Booleans");
 public:
     SoAVector() : SoAVector(0) { }
     explicit SoAVector(size_t s) { resize(s); }
