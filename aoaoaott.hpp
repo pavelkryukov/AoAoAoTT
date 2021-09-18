@@ -72,6 +72,7 @@ protected:
     using T = typename Container::value_type;
 public:
     auto aggregate() const noexcept { return base->aggregate(this->get_index()); }
+    operator T() const noexcept { return aggregate(); }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(ptr)>>, typename ... Args>
     auto method(Args&& ... args) const // noexcept?
