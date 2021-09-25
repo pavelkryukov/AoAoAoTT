@@ -61,7 +61,6 @@ class Traits
 {
 protected:
     static_assert(!std::is_empty<T>::value, "AoAoAoTT does not support empty structures");
-    static_assert(std::is_trivially_copyable<T>::value, "AoAoAoTT supports only trivially copyable structures");
     static_assert(std::is_standard_layout<T>::value, "AoAoAoTT supports only standard layout structures");
 };
 
@@ -149,6 +148,8 @@ public:
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
     constexpr auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
 
+    auto aggregate_move() const noexcept { return this->get_base()->aggregate_move(this->get_index()); }
+
     using BaseFacade<Container>::operator->*;
 
     template<typename R>
@@ -163,7 +164,7 @@ public:
     void operator=(T&& rhs) const noexcept
     {
         static_assert(std::is_move_assignable_v<T>, "Object cannot be assigned because its move assignment operator is implicitly deleted");
-        this->get_base()->dissipate(std::move(rhs), this->get_index());
+        this->get_base()->dissipate_move(std::move(rhs), this->get_index());
     }
 };
 
@@ -181,8 +182,9 @@ public:
 
 protected:
     T aggregate(size_t index) const noexcept { return storage[index]; }
+    T aggregate_move(size_t index) const noexcept { return std::move(storage[index]); }
     void dissipate(const T& rhs, size_t index) const noexcept { storage[index] = rhs; }
-    void dissipate(T&& rhs, size_t index) const noexcept { storage[index] = std::move(rhs); }
+    void dissipate_move(T&& rhs, size_t index) const noexcept { storage[index] = std::move(rhs); }
 
     void replicate(const T& value, size_t start, size_t end)
     {
@@ -252,8 +254,10 @@ protected:
     static constexpr bool has_bool() { return check_bool(AsTypeList{}); }
 
     T aggregate(size_t index) const noexcept { return aggregate(index, Indices{}); }
-    void dissipate(const T& rhs, size_t index) const noexcept  { dissipate(rhs, index, Indices{}); }
-    void dissipate(T&& rhs, size_t index) const noexcept { dissipate(std::move(rhs), index, Indices{}); }
+    T aggregate_move(size_t index) const noexcept { return aggregate_move(index, Indices{}); }
+
+    void dissipate(const T& rhs, size_t index) const noexcept { dissipate(rhs, index, Indices{}); }
+    void dissipate_move(T&& rhs, size_t index) const noexcept { dissipate_move(std::move(rhs), index, Indices{}); }
     void replicate(const T& value, size_t start, size_t end) { replicate(value, start, end, Indices{}); }
 
     template<typename R>
@@ -273,11 +277,27 @@ private:
     }
 
     template<size_t ... N>
+    void dissipate_move(T&& src, size_t index, std::index_sequence<N...>)
+        const noexcept(noexcept(std::is_nothrow_move_assignable_v<T>))
+    {
+        ((void)(std::get<N>(storage)[index] = std::move(boost::pfr::get<N>(src))), ...);
+    }
+
+    template<size_t ... N>
     T aggregate(size_t index, std::index_sequence<N...>)
         const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
     {
         T result{};
         boost::pfr::structure_tie(result) = std::tie(std::get<N>(storage)[index]...);
+        return result;
+    }
+
+    template<size_t ... N>
+    T aggregate_move(size_t index, std::index_sequence<N...>)
+        const noexcept(noexcept(std::is_nothrow_move_assignable_v<T>))
+    {
+        T result{};
+        ((void)(boost::pfr::get<N>(result) = std::move(std::get<N>(storage)[index])), ...);
         return result;
     }
 

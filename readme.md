@@ -100,9 +100,31 @@ The best and the most actual reference is provided by [unit tests](https://githu
 ----
 ## Known limitations
 
-### Only [trivially copyable](https://en.cppreference.com/w/cpp/named_req/TriviallyCopyable) types are supported
+### Consider using Rule of Zero structures
 
 That has a reason: how would you _adjust_ copy methods, move methods, or destructors if the fields are distributed all around the memory?
+For example:
+
+```c++
+   struct Point1 {
+       int x, y;
+       int *z;
+       ~Point1() { delete z; }
+   };
+```
+
+One you move the object to SoA, C++ will consider it dead and call the destructor. Data is lost!
+
+However, we cannot forbid anything which is not `is_trivially_...`. Consider an example of [Rule of Zero](https://cpppatterns.com/patterns/rule-of-zero.html) structure:
+
+```c++
+   struct Point2 {
+       int x, y;
+       std::unique_ptr<int> z;
+   };
+```
+
+While this class has a non-trivial destructor, it has no issues with SoA, because `unique_ptr` will be moved correctly.
 
 ### Aggregation is costly
 

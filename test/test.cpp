@@ -427,3 +427,24 @@ TEST_CONTAINER_CASE("array fill")
     storage.fill(A{2, 7, 1828});
     CHECK( storage[93]->*(&A::dum) == 1828 );
 }
+
+TEST_CONTAINER_CASE("move-semantics")
+{
+    struct Point
+    {
+        int x = 0;
+        int y = 0;
+        std::unique_ptr<int> z;
+    };
+
+    ARRAY_CONTAINER<Point, 100> storage;
+    storage[3] = Point{2, 4, std::make_unique<int>(10)};
+    storage[4] = Point{2, 4, std::make_unique<int>(10)};
+
+    CHECK( storage[3]->*(&Point::x) == 2 );
+    CHECK( storage[3]->*(&Point::y) == 4 );
+    CHECK( *(storage[3]->*(&Point::z)) == 10 );
+
+    Point point = storage[4].aggregate_move();
+    CHECK( *(point.z) == 10 );
+}
