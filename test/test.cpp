@@ -439,12 +439,15 @@ TEST_CONTAINER_CASE("move-semantics")
 
     ARRAY_CONTAINER<Point, 100> storage;
     storage[3] = Point{2, 4, std::make_unique<int>(10)};
-    storage[4] = Point{2, 4, std::make_unique<int>(10)};
+    storage[4] = Point{2, 4, std::make_unique<int>(7)};
 
     CHECK( storage[3]->*(&Point::x) == 2 );
     CHECK( storage[3]->*(&Point::y) == 4 );
     CHECK( *(storage[3]->*(&Point::z)) == 10 );
 
     Point point = storage[4].aggregate_move();
-    CHECK( *(point.z) == 10 );
+    CHECK( *(point.z) == 7 );
+
+    Point point2 = std::move(storage[3]);
+    CHECK( *(point2.z) == 10 );
 }

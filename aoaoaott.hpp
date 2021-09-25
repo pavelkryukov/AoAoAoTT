@@ -149,6 +149,7 @@ public:
     constexpr auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
 
     auto aggregate_move() const noexcept { return this->get_base()->aggregate_move(this->get_index()); }
+    operator T() const && noexcept { return aggregate_move(); }
 
     using BaseFacade<Container>::operator->*;
 
