@@ -133,7 +133,7 @@ However, you can use `std::array` without any problems:
 
 ### Inherited structures are not supported
 
-To decompose data structure, we use PFR mechanism which does not support inherited structures at the moment. The issue is described in [PFR docs](https://apolukhin.github.io/magic_get/boost_pfr/limitations_and_configuration.html).
+To decompose data structure, we use PFR mechanism which does not support inherited structures at the moment. The issue is described in [PFR docs]https://www.boost.org/doc/libs/1_77_0/doc/html/boost_pfr/limitations_and_configuration.html).
 
 ### Padding bytes are not supported
 
