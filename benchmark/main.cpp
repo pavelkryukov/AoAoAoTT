@@ -149,14 +149,14 @@ static void AllBytes(benchmark::State& state)
 {
     auto storage = get_prepared_container<Container, A>();
     const auto iterations = state.range(0) / sizeof(A) / state.range(1);
-    for (size_t i = 0; i < iterations; ++i)
+    for (size_t i = 0; i < state.range() / sizeof(A); ++i)
         (*storage)[i] = A();
 
     assert(iterations <= storage->size());
     for (auto _ : state) {
-        for (size_t i = 0, j = 0; i < iterations; ++i, j += state.range(1)) {
-	    (*storage)[j]->*(&A::x) = (*storage)[j].aggregate().sum();
-	}
+         for (size_t i = 0, j = 0; i < iterations; ++i, j += state.range(1)) {
+              (*storage)[j]->*(&A::x) = (*storage)[j].aggregate().sum();
+         }
     }
 
     state.SetBytesProcessed(int64_t(state.iterations()) * iterations * sizeof(A));
