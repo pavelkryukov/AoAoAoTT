@@ -126,7 +126,7 @@ auto get_prepared_container()
 
 template<template<typename, size_t> typename Container, typename A>
 __attribute__((optimize("no-tree-vectorize")))
-static void Access12Bytes(benchmark::State& state)
+static void Bytes12(benchmark::State& state)
 {
     auto storage = get_prepared_container<Container, A>();
     const auto iterations = state.range(0) / sizeof(A);
@@ -145,17 +145,17 @@ static void Access12Bytes(benchmark::State& state)
 
 template<template<typename, size_t> typename Container, typename A>
 __attribute__((optimize("no-tree-vectorize")))
-static void AccessAllBytes(benchmark::State& state)
+static void AllBytes(benchmark::State& state)
 {
     auto storage = get_prepared_container<Container, A>();
-    const auto iterations = state.range(0) / sizeof(A);
+    const auto iterations = state.range(0) / sizeof(A) / state.range(1);
     for (size_t i = 0; i < iterations; ++i)
         (*storage)[i] = A();
 
     assert(iterations <= storage->size());
     for (auto _ : state) {
-        for (size_t i = 0; i < iterations; ++i) {
-	    (*storage)[i]->*(&A::x) = (*storage)[i].aggregate().sum();
+        for (size_t i = 0, j = 0; i < iterations; ++i, j += state.range(1)) {
+	    (*storage)[j]->*(&A::x) = (*storage)[j].aggregate().sum();
 	}
     }
 
@@ -168,49 +168,49 @@ using SoA = aoaoaott::SoAArray<T, N>;
 template<typename T, size_t N>
 using AoS = aoaoaott::AoSArray<T, N>;
 
-BENCHMARK_TEMPLATE(Access12Bytes, SoA, A12)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-//BENCHMARK_TEMPLATE(Access12Bytes, SoA, A13)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, SoA, A16)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, SoA, A32)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, SoA, A48)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, SoA, A60)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, SoA, A64)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, SoA, A68)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, SoA, A96)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, SoA, A128)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(Bytes12, SoA, A12)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+//BENCHMARK_TEMPLATE(Bytes12, SoA, A13)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, SoA, A16)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, SoA, A32)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, SoA, A48)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, SoA, A60)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, SoA, A64)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, SoA, A68)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, SoA, A96)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, SoA, A128)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
 
-BENCHMARK_TEMPLATE(Access12Bytes, AoS, A12)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, AoS, A13)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, AoS, A16)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, AoS, A32)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, AoS, A48)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, AoS, A60)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, AoS, A64)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, AoS, A68)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, AoS, A96)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(Access12Bytes, AoS, A128)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(Bytes12, AoS, A12)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, AoS, A13)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, AoS, A16)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, AoS, A32)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, AoS, A48)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, AoS, A60)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, AoS, A64)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, AoS, A68)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, AoS, A96)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(Bytes12, AoS, A128)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
 
-BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A12)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-//BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A13)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A16)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A32)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A48)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A60)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A64)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A68)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A96)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, SoA, A128)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A12)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+//BENCHMARK_TEMPLATE(AllBytes, SoA, A13)->Args({16 KB,1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, SoA, A16)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, SoA, A32)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, SoA, A48)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, SoA, A60)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, SoA, A64)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, SoA, A68)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, SoA, A96)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, SoA, A128)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
 
-BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A12)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A13)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A16)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A32)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A48)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A60)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A64)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A68)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A96)->RangeMultiplier(4)->Range(16 KB, 4 MB);
-BENCHMARK_TEMPLATE(AccessAllBytes, AoS, A128)->RangeMultiplier(4)->Range(16 KB, 4 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A12)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, AoS, A13)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, AoS, A16)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, AoS, A32)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, AoS, A48)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, AoS, A60)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, AoS, A64)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, AoS, A68)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, AoS, A96)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, AoS, A128)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
 
 BENCHMARK_MAIN();
 
