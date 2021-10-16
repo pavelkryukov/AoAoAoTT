@@ -143,18 +143,18 @@ static void Bytes12(benchmark::State& state)
     state.SetBytesProcessed(int64_t(state.iterations()) * iterations * sizeof(int32_t) * 3);
 }
 
-template<template<typename, size_t> typename Container, typename A>
+template<template<typename, size_t> typename Container, typename A, size_t INCREMENT>
 __attribute__((optimize("no-tree-vectorize")))
 static void AllBytes(benchmark::State& state)
 {
     auto storage = get_prepared_container<Container, A>();
-    const auto iterations = state.range(0) / sizeof(A) / state.range(1);
+    const auto iterations = state.range(0) / sizeof(A) / INCREMENT;
     for (size_t i = 0; i < state.range() / sizeof(A); ++i)
         (*storage)[i] = A();
 
     assert(iterations <= storage->size());
     for (auto _ : state) {
-         for (size_t i = 0, j = 0; i < iterations; ++i, j += state.range(1)) {
+         for (size_t i = 0, j = 0; i < iterations; ++i, j += INCREMENT) {
               (*storage)[j]->*(&A::x) = (*storage)[j].aggregate().sum();
          }
     }
@@ -190,27 +190,48 @@ BENCHMARK_TEMPLATE(Bytes12, AoS, A68)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 
 BENCHMARK_TEMPLATE(Bytes12, AoS, A96)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
 BENCHMARK_TEMPLATE(Bytes12, AoS, A128)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
 
-BENCHMARK_TEMPLATE(AllBytes, SoA, A12)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-//BENCHMARK_TEMPLATE(AllBytes, SoA, A13)->Args({16 KB,1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, SoA, A16)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, SoA, A32)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, SoA, A48)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, SoA, A60)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, SoA, A64)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, SoA, A68)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, SoA, A96)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, SoA, A128)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, SoA, A12, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+//BENCHMARK_TEMPLATE(AllBytes, SoA, A13)->Arg(16 KB)->Arg({64 KB, 1})->Arg({1 MB, 1})->Arg({4 MB, 1});
+BENCHMARK_TEMPLATE(AllBytes, SoA, A16, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A32, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A48, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A60, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A64, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A68, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A96, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A128, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
 
-BENCHMARK_TEMPLATE(AllBytes, AoS, A12)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, AoS, A13)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, AoS, A16)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, AoS, A32)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, AoS, A48)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, AoS, A60)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, AoS, A64)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, AoS, A68)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, AoS, A96)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
-BENCHMARK_TEMPLATE(AllBytes, AoS, A128)->Args({16 KB, 1})->Args({64 KB, 1})->Args({1 MB, 1})->Args({4 MB, 1})->Args({1 MB, 16});
+BENCHMARK_TEMPLATE(AllBytes, AoS, A12, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A13, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A16, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A32, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A48, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A60, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A64, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A68, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A96, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A128, 1)->Arg(16 KB)->Arg(64 KB)->Arg(1 MB)->Arg(4 MB);
+
+BENCHMARK_TEMPLATE(AllBytes, SoA, A12, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A16, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A32, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A48, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A60, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A64, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A68, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A96, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, SoA, A128, 16)->Arg(1 MB);
+
+BENCHMARK_TEMPLATE(AllBytes, AoS, A12, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A13, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A16, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A32, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A48, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A60, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A64, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A68, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A96, 16)->Arg(1 MB);
+BENCHMARK_TEMPLATE(AllBytes, AoS, A128, 16)->Arg(1 MB);
 
 BENCHMARK_MAIN();
 
