@@ -423,10 +423,10 @@ public:
     auto rbegin() noexcept { return reverse_iterator(cend()); }
     auto rend() noexcept { return reverse_iterator(begin()); } 
 
-    const auto front() const { return *begin(); }
+    auto front() const { return *begin(); }
     auto front() { return *begin(); }
 
-    const auto back() const { auto tmp = end(); --tmp; return *tmp; }
+    auto back() const { auto tmp = end(); --tmp; return *tmp; }
     auto back() { auto tmp = end(); --tmp; return *tmp; }
 
 private:
