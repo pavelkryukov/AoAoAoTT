@@ -145,7 +145,7 @@ TEST_CONTAINER_CASE("structure with array")
 TEST_CONTAINER_CASE("assign array")
 {
     VECTOR_CONTAINER<WithArray> storage( 10);
-    WithArray hw{ 16, "Hello World!!!!"};
+    WithArray hw{ 16, {"Hello World!!!!"}};
     storage[6] = hw;
 
     CHECK( std::strcmp((storage[6]->*(&WithArray::array)).data(), "Hello World!!!!") == 0 );
