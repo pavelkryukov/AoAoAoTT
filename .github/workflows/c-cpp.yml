@@ -9,6 +9,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [g++, clang++]
     steps:
     - uses: actions/checkout@v2
     - name: Install Boost
@@ -17,7 +20,7 @@ jobs:
       run: git clone https://github.com/boostorg/pfr
     - name: Make test
       working-directory: test
-      run: make CXXFLAGS='-fprofile-arcs -ftest-coverage -g' LDFLAGS='-lgcov --coverage' BOOST_PFR_PATH=../pfr/include test
+      run: CXX=${{ matrix.compiler }} make CXXFLAGS='-fprofile-arcs -ftest-coverage -g' LDFLAGS='-lgcov --coverage' BOOST_PFR_PATH=../pfr/include test
     - name: Run test
       working-directory: test
       run: ./test
