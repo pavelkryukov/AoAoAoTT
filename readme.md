@@ -4,6 +4,8 @@
 
 AoAoAoTT provides AoS and SoA containers interchangeable between each other in terms of interfaces.
 
+More details are discussed in this talk (in Russian): [Interchangeable AoS and SoA containers, _C++ Russia 2021_](https://cppconf.ru/en/talks/interchangeable-aos-and-soa-containers/).
+
 ## Motivation
 
 [Array of Structures and Structure of Arrays](https://en.wikipedia.org/wiki/AOS_and_SOA) are two ways to arrange a sequence of records in computer memory.
@@ -173,6 +175,7 @@ It is a undocumented restriction of PFR.
 As you may guess, it is a result of STL-incompliance of `std::vector<bool>`.
 
 ----
+
 ## Further reading
 
 * _**[Nomad Game Engine: Part 4.3 — AoS vs SoA](https://medium.com/@savas/nomad-game-engine-part-4-3-aos-vs-soa-storage-5bec879aa38c)** by Niko Savas_ — nice demonstration of SoA advantages.
@@ -184,5 +187,6 @@ As you may guess, it is a result of STL-incompliance of `std::vector<bool>`.
 * [Paolo Crosetto](https://github.com/crosetto) for his inspiring [SoAvsAoS implementation](https://github.com/crosetto/SoAvsAoS)
 * [Alexandr Poltavsky](https://github.com/alexpolt) for public domain [implementation of Loophole and Type List](https://github.com/alexpolt/luple)
 * [Antony Polukhin](https://github.com/apolukhin) and contributors for [Boost.PRF](https://github.com/boostorg/pfr)
+* [Timur Safin](https://github.com/tsafin) and [Alexey Klimkin](https://github.com/klimkin) for reviewing [C++ Russia 2021 talk](https://cppconf.ru/en/talks/interchangeable-aos-and-soa-containers/).
 * [@Fuyutsubaki](https://github.com/Fuyutsubaki) for elegant pointer-to-member to index converter
 * [Alexandr Titov](https://github.com/alexander-titov) for assistance with benchmarking
