@@ -33,28 +33,6 @@
 #include <vector>
 
 namespace aoaoaott {
-  
-namespace visitor {
-    template <size_t I, typename T, typename F>
-    static void visit_all_impl(T& tup, F fun)
-    {
-        fun(std::get<I>(tup));
-        if constexpr (I > 0)
-            visit_all_impl<I - 1>(tup, fun);
-    }
-
-    template <typename F, typename... Ts>
-    void visit_all(std::tuple<Ts...> const& tup, F fun)
-    {
-        visit_all_impl<sizeof...(Ts) - 1>(tup, fun);
-    }
-
-    template <typename F, typename... Ts>
-    void visit_all(std::tuple<Ts...>& tup, F fun)
-    {
-        visit_all_impl<sizeof...(Ts) - 1>(tup, fun);
-    }
-} // visitor
 
 template<typename T>
 class Traits
@@ -510,8 +488,8 @@ public:
     }
 
     auto capacity() const noexcept { return std::get<0>(this->storage).capacity(); }
-    void reserve(size_t s) { visitor::visit_all(this->storage, [s](auto& v){ v.reserve(s); }); }
-    void shrink_to_fit()   { visitor::visit_all(this->storage, [](auto& v){ v.shrink_to_fit(); }); }
+    void reserve(size_t s) { apply([s](auto& v){ v.reserve(s); }); }
+    void shrink_to_fit()   { apply([](auto& v){ v.shrink_to_fit(); }); }
 
     void assign(size_t s, const T& value)
     {
@@ -534,8 +512,15 @@ public:
         resize_memory(s + 1);
         this->dissipate(std::move(value), s);
     }
+
 private:
-    void resize_memory(size_t s) { visitor::visit_all(this->storage, [s](auto& v){ v.resize(s); }); }
+    void resize_memory(size_t s) { apply([s](auto& v){ v.resize(s); }); }
+
+    template <typename F>
+    void apply(F fun)
+    {
+        std::apply([fun](auto& ...x){(..., fun(x));}, this->storage);
+    }
 };
 
 } // namespace aoaoaott
