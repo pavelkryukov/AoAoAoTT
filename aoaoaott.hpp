@@ -55,35 +55,28 @@ public:
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
     constexpr const auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
 
-    template<typename R>
-    constexpr const R& operator->*(R T::* field) const noexcept
-    {
-        return this->get_base()->get_member(field, this->get_index());
-    }
-
     template<auto ptr, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(ptr)>>, typename ... Args>
     auto method(Args&& ... args) const // noexcept?
     {
-        object_mover om(this);
-        return (om.object.*ptr)(std::forward<Args>(args)...);
+        return this->get_base()->template method<ptr>(index, std::forward<Args>(args)...);
     }
 
     template<typename R, typename ... Args>
     constexpr auto operator->*(R (T::* fun)(Args ...)) const noexcept
     {
-        return [this, fun](Args&& ... args) {
-            object_mover om(this);
-            return (om.object.*fun)(std::forward<Args>(args)...);
-        };
+        return this->get_base()->get_method(index, fun);
     }
 
     template<typename R, typename ... Args>
     constexpr auto operator->*(R (T::* fun)(Args ...) const) const noexcept
     {
-        return [this, fun](Args&& ... args) {
-            object_mover om(this);
-            return (om.object.*fun)(std::forward<Args>(args)...);
-        };
+        return this->get_base()->get_method(index, fun);
+    }
+
+    template<typename R>
+    constexpr const R& operator->*(R T::* field) const noexcept
+    {
+        return this->get_base()->get_member(field, this->get_index());
     }
 
 protected:
@@ -98,14 +91,6 @@ protected:
 private:
     size_t index;
     ContainerRef base;
-
-    struct object_mover
-    {
-        const BaseFacade* const facade;
-        T object;
-        explicit object_mover(const BaseFacade* facade) : facade(facade), object(facade->aggregate()) { }
-        ~object_mover() { facade->get_base()->dissipate(std::move(object), facade->get_index()); }
-    };
 };
 
 template<typename Container>
@@ -160,6 +145,28 @@ protected:
     T aggregate_move(size_t index) const noexcept { return std::move(storage[index]); }
     void dissipate(const T& rhs, size_t index) const noexcept { storage[index] = rhs; }
     void dissipate_move(T&& rhs, size_t index) const noexcept { storage[index] = std::move(rhs); }
+
+    template<auto ptr, typename ... Args>
+    auto method(size_t index, Args&& ... args) const // noexcept?
+    {
+        return (storage[index].*ptr)(std::forward<Args>(args)...);
+    }
+
+    template<typename R, typename ... Args>
+    constexpr auto get_method(size_t index, R (T::* fun)(Args ...)) const noexcept
+    {
+        return [&](Args&& ... args) {
+            return (storage[index].*fun)(std::forward<Args>(args)...);
+        };
+    }
+
+    template<typename R, typename ... Args>
+    constexpr auto get_method(size_t index, R (T::* fun)(Args ...) const) const noexcept
+    {
+        return [&](Args&& ... args) {
+            return (storage[index].*fun)(std::forward<Args>(args)...);
+        };
+    }
 
     void replicate(const T& value, size_t start, size_t end)
     {
@@ -241,9 +248,45 @@ protected:
         return get_container(member)[index];
     }
 
+    template<auto ptr, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(ptr)>>, typename ... Args>
+    auto method(size_t index, Args&& ... args) const // noexcept?
+    {
+        Temp tmp(this, index);
+        return (tmp.object.*ptr)(std::forward<Args>(args)...);
+    }
+
+    template<typename R, typename ... Args>
+    constexpr auto get_method(size_t index, R (T::* fun)(Args ...)) const noexcept
+    {
+        return [=](Args&& ... args) {
+            Temp tmp(this, index);
+            return (tmp.object.*fun)(std::forward<Args>(args)...);
+        };
+    }
+
+    template<typename R, typename ... Args>
+    constexpr auto get_method(size_t index, R (T::* fun)(Args ...) const) const noexcept
+    {
+        return [=](Args&& ... args) {
+            Temp tmp(this, index);
+            return (tmp.object.*fun)(std::forward<Args>(args)...);
+        };
+    }
+
     mutable Storage storage;
 
 private:
+    class Temp
+    {
+        public:
+            T object;
+            Temp(const SoARandomAccessContainer* base, size_t index) : object(base->aggregate(index)), base(base), index(index) { }
+            ~Temp() { base->dissipate(std::move(object), index); }
+        private:
+            const SoARandomAccessContainer* const base;
+            size_t index;
+    };
+
     template<size_t ... N>
     void dissipate(const T& src, size_t index, std::index_sequence<N...>)
         const noexcept(noexcept(std::is_nothrow_copy_assignable_v<T>))
