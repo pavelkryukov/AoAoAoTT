@@ -25,9 +25,8 @@ jobs:
       working-directory: test
       run: ./test
     - name: Codecov
-      uses: codecov/codecov-action@v2.1.0
-      with:
-        directory: test
+      working-directory: test
+      run: bash <(curl -s https://codecov.io/bash) -x "gcov"
 
   benchmark:
     runs-on: ubuntu-latest
