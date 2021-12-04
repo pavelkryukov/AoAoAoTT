@@ -155,16 +155,18 @@ protected:
     template<typename R, typename ... Args>
     constexpr auto get_method(size_t index, R (T::* fun)(Args ...)) const noexcept
     {
-        return [&](Args&& ... args) {
-            return (storage[index].*fun)(std::forward<Args>(args)...);
+        auto* e = &storage[index];
+        return [=](Args&& ... args) {
+            return (e->*fun)(std::forward<Args>(args)...);
         };
     }
 
     template<typename R, typename ... Args>
     constexpr auto get_method(size_t index, R (T::* fun)(Args ...) const) const noexcept
     {
-        return [&](Args&& ... args) {
-            return (storage[index].*fun)(std::forward<Args>(args)...);
+        auto* e = &storage[index];
+        return [=](Args&& ... args) {
+            return (e->*fun)(std::forward<Args>(args)...);
         };
     }
 
