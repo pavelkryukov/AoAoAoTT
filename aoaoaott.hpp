@@ -42,14 +42,24 @@ protected:
     static_assert(std::is_standard_layout<T>::value, "AoAoAoTT supports only standard layout structures");
 };
 
-template<typename Container>
+template<typename Container, typename ContainerRef>
 class BaseFacade
 {
-protected:
     using T = typename Container::value_type;
 public:
+    constexpr BaseFacade(ContainerRef b, size_t i) : index(i), base(b) { }
+
     auto aggregate() const noexcept { return base->aggregate(this->get_index()); }
     operator T() const noexcept { return aggregate(); }
+
+    template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
+    constexpr const auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
+
+    template<typename R>
+    constexpr const R& operator->*(R T::* field) const noexcept
+    {
+        return this->get_base()->get_member(field, this->get_index());
+    }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(ptr)>>, typename ... Args>
     auto method(Args&& ... args) const // noexcept?
@@ -77,17 +87,18 @@ public:
     }
 
 protected:
-    constexpr BaseFacade(const Container* base, size_t index) : base(base), index(index) { }
+    constexpr ContainerRef get_base() const noexcept { return base; }
+
     constexpr auto get_index() const noexcept { return index; }
 
-    constexpr const auto* get_base() const noexcept { return base; }
     void inc_index() noexcept { ++index; }
     void dec_index() noexcept { --index; }
     void advance_index(ptrdiff_t n) noexcept { index += n; }
 
 private:
-    const Container* base;
     size_t index;
+    ContainerRef base;
+
     struct object_mover
     {
         const BaseFacade* const facade;
@@ -98,30 +109,15 @@ private:
 };
 
 template<typename Container>
-class ConstFacade : public BaseFacade<Container>
-{
-    using typename BaseFacade<Container>::T;
-public:
-    constexpr ConstFacade( const Container* b, size_t index) : BaseFacade<Container>(b, index) { }
-
-    using BaseFacade<Container>::operator->*;
-
-    template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-    constexpr const auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
-
-    template<typename R>
-    constexpr const R& operator->*(R T::* field) const noexcept
-    {
-        return this->get_base()->get_member(field, this->get_index());
-    }
-};
+using ConstFacade = BaseFacade<Container, const Container*>;
 
 template<typename Container>
-class Facade : public BaseFacade<Container>
+class Facade : public BaseFacade<Container, Container*>
 {
-    using typename BaseFacade<Container>::T;
+    using T = typename Container::value_type;
+    using Base = BaseFacade<Container, Container*>;
 public:
-    constexpr Facade( Container* b, size_t index) : BaseFacade<Container>(b, index) { }
+    constexpr Facade( Container* b, size_t index) : Base(b, index) { }
 
     template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
     constexpr auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
@@ -129,7 +125,7 @@ public:
     auto aggregate_move() const noexcept { return this->get_base()->aggregate_move(this->get_index()); }
     operator T() const && noexcept { return aggregate_move(); }
 
-    using BaseFacade<Container>::operator->*;
+    using Base::operator->*;
 
     template<typename R>
     constexpr R& operator->*(R T::* field) const noexcept { return this->get_base()->get_member(field, this->get_index()); }
@@ -150,9 +146,9 @@ public:
 template<typename T, template <typename> class Container>
 class AoSRandomAccessContainer : Traits<T>
 {
-    friend class BaseFacade<AoSRandomAccessContainer>;
+    friend class BaseFacade<AoSRandomAccessContainer, AoSRandomAccessContainer*>;
+    friend class BaseFacade<AoSRandomAccessContainer, const AoSRandomAccessContainer*>;
     friend class Facade<AoSRandomAccessContainer>;
-    friend class ConstFacade<AoSRandomAccessContainer>;
 
 public:
     using value_type = T;
@@ -220,9 +216,9 @@ class SoARandomAccessContainer : Traits<T>
 
     static_assert(sizeof(T) == sizeof_list(AsTypeList{}), "AoAoAoTT does not support structures with padding bytes");
 
-    friend class BaseFacade<SoARandomAccessContainer>;
+    friend class BaseFacade<SoARandomAccessContainer, SoARandomAccessContainer*>;
+    friend class BaseFacade<SoARandomAccessContainer, const SoARandomAccessContainer*>;
     friend class Facade<SoARandomAccessContainer>;
-    friend class ConstFacade<SoARandomAccessContainer>;
 
 public:
     using value_type = T;
