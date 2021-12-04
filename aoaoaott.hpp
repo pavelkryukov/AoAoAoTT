@@ -212,10 +212,10 @@ class SoARandomAccessContainer : Traits<T>
     template<typename ... TT>
     static constexpr bool check_bool(type_list<TT...>)
     {
-	for (auto e : { std::is_same_v<TT, bool>... })
-	    if (e)
-	        return true;
-	return false;
+        for (auto e : { std::is_same_v<TT, bool>... })
+            if (e)
+                return true;
+        return false;
     }
 
     static_assert(sizeof(T) == sizeof_list(AsTypeList{}), "AoAoAoTT does not support structures with padding bytes");
