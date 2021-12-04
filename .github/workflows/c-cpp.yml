@@ -25,7 +25,9 @@ jobs:
       working-directory: test
       run: ./test
     - name: Codecov
-      uses: codecov/codecov-action@v1.0.15
+      uses: codecov/codecov-action@v2.1.0
+      with:
+        directory: test
 
   benchmark:
     runs-on: ubuntu-latest
