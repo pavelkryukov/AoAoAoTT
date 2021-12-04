@@ -333,8 +333,17 @@ TEST_CONTAINER_CASE("reverse iterator")
 
 TEST_CONTAINER_CASE("const method")
 {
-    VECTOR_CONTAINER<HasMethod> storage( 10, HasMethod{33, 44});
+    const VECTOR_CONTAINER<HasMethod> storage( 10, HasMethod{33, 44});
     CHECK( storage[3].method<&HasMethod::drink_cologne>(1) == 80);
+}
+
+TEST_CONTAINER_CASE("non-const method")
+{
+    VECTOR_CONTAINER<HasMethod> storage( 10, HasMethod{33, 44});
+    storage[3].method<&HasMethod::drink_double_bourbon>();
+
+    CHECK( storage[3]->*(&HasMethod::alain) == 44 );
+    CHECK( storage[3]->*(&HasMethod::delon) == 33 );
 }
 
 TEST_CONTAINER_CASE("const method and mutable field")
@@ -351,8 +360,17 @@ TEST_CONTAINER_CASE("const method and mutable field")
 
 TEST_CONTAINER_CASE("arrow-star method")
 {
-    VECTOR_CONTAINER<HasMethod> storage( 10, HasMethod{33, 44});
+    const VECTOR_CONTAINER<HasMethod> storage( 10, HasMethod{33, 44});
     CHECK( (storage[3]->*(&HasMethod::drink_cologne))(1) == 80);
+}
+
+TEST_CONTAINER_CASE("arrow-star non-const method")
+{
+    VECTOR_CONTAINER<HasMethod> storage( 10, HasMethod{33, 44});
+    (storage[3]->*(&HasMethod::drink_double_bourbon))();
+
+    CHECK( storage[3]->*(&HasMethod::alain) == 44 );
+    CHECK( storage[3]->*(&HasMethod::delon) == 33 );
 }
 
 TEST_CONTAINER_CASE("initialize array and r/w")

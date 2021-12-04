@@ -52,13 +52,16 @@ public:
     auto aggregate() const noexcept { return base->aggregate(this->get_index()); }
     operator T() const noexcept { return aggregate(); }
 
-    template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-    constexpr const auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
+    template<auto fun, typename = std::enable_if_t<std::is_member_pointer_v<decltype(fun)>>>
+    constexpr const auto& get() const noexcept
+    {
+        return this->get_base()->get_member(fun, this->get_index());
+    }
 
-    template<auto ptr, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(ptr)>>, typename ... Args>
+    template<auto fun, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(fun)>>, typename ... Args>
     auto method(Args&& ... args) const // noexcept?
     {
-        return this->get_base()->template method<ptr>(index, std::forward<Args>(args)...);
+        return this->get_base()->template call_method<fun>(index, std::forward<Args>(args)...);
     }
 
     template<typename R, typename ... Args>
@@ -104,8 +107,8 @@ class Facade : public BaseFacade<Container, Container*>
 public:
     constexpr Facade( Container* b, size_t index) : Base(b, index) { }
 
-    template<auto ptr, typename = std::enable_if_t<std::is_member_pointer_v<decltype(ptr)>>>
-    constexpr auto& get() const noexcept { return this->get_base()->get_member(ptr, this->get_index()); }
+    template<auto fun, typename = std::enable_if_t<std::is_member_pointer_v<decltype(fun)>>>
+    constexpr auto& get() const noexcept { return this->get_base()->get_member(fun, this->get_index()); }
 
     auto aggregate_move() const noexcept { return this->get_base()->aggregate_move(this->get_index()); }
     operator T() const && noexcept { return aggregate_move(); }
@@ -146,10 +149,16 @@ protected:
     void dissipate(const T& rhs, size_t index) noexcept { storage[index] = rhs; }
     void dissipate_move(T&& rhs, size_t index) noexcept { storage[index] = std::move(rhs); }
 
-    template<auto ptr, typename ... Args>
-    auto method(size_t index, Args&& ... args) const // noexcept?
+    template<auto fun, typename ... Args>
+    auto call_method(size_t index, Args&& ... args) const // noexcept?
     {
-        return (storage[index].*ptr)(std::forward<Args>(args)...);
+        return (storage[index].*fun)(std::forward<Args>(args)...);
+    }
+
+    template<auto fun, typename ... Args>
+    auto call_method(size_t index, Args&& ... args) // noexcept?
+    {
+        return (storage[index].*fun)(std::forward<Args>(args)...);
     }
 
     template<typename R, typename ... Args>
@@ -163,6 +172,15 @@ protected:
 
     template<typename R, typename ... Args>
     constexpr auto get_method(size_t index, R (T::* fun)(Args ...) const) const noexcept
+    {
+        auto* e = &storage[index];
+        return [=](Args&& ... args) {
+            return (e->*fun)(std::forward<Args>(args)...);
+        };
+    }
+
+    template<typename R, typename ... Args>
+    constexpr auto get_method(size_t index, R (T::* fun)(Args ...)) noexcept
     {
         auto* e = &storage[index];
         return [=](Args&& ... args) {
@@ -256,11 +274,11 @@ protected:
         return get_container(member)[index];
     }
 
-    template<auto ptr, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(ptr)>>, typename ... Args>
-    auto method(size_t index, Args&& ... args) const // noexcept?
+    template<auto fun, typename = std::enable_if_t<std::is_member_function_pointer_v<decltype(fun)>>, typename ... Args>
+    auto call_method(size_t index, Args&& ... args) const // noexcept?
     {
         Temp tmp(this, index);
-        return (tmp.object.*ptr)(std::forward<Args>(args)...);
+        return (tmp.object.*fun)(std::forward<Args>(args)...);
     }
 
     template<typename R, typename ... Args>
@@ -281,6 +299,27 @@ protected:
         };
     }
 
+    // In AoS container, you can do this:
+    // struct Example
+    // {
+    //     mutable int x;
+    //     void update_x() const { ++x; }
+    // };
+    //
+    // void foo(const std::vector<Example>& storage)
+    // {
+    //     storage[3].update_x();
+    // }
+    //
+    // In our library, it is transformed to:
+    // void foo(const std::vector<Example>& storage)
+    // {
+    //     storage[3].method<HastMutable::update_x>();
+    // }
+    //
+    // Thus, we must keep 'storage' const-qualified while mutating.
+    // The simplest point to do it is here:
+    //
     mutable Storage storage;
 
 private:
