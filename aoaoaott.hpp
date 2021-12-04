@@ -142,9 +142,9 @@ public:
 
 protected:
     T aggregate(size_t index) const noexcept { return storage[index]; }
-    T aggregate_move(size_t index) const noexcept { return std::move(storage[index]); }
-    void dissipate(const T& rhs, size_t index) const noexcept { storage[index] = rhs; }
-    void dissipate_move(T&& rhs, size_t index) const noexcept { storage[index] = std::move(rhs); }
+    T aggregate_move(size_t index) noexcept { return std::move(storage[index]); }
+    void dissipate(const T& rhs, size_t index) noexcept { storage[index] = rhs; }
+    void dissipate_move(T&& rhs, size_t index) noexcept { storage[index] = std::move(rhs); }
 
     template<auto ptr, typename ... Args>
     auto method(size_t index, Args&& ... args) const // noexcept?
@@ -175,12 +175,18 @@ protected:
     }
 
     template<typename R>
-    constexpr R& get_member(R T::* member, size_t index) const noexcept
+    constexpr const R& get_member(R T::* member, size_t index) const noexcept
     {
         return storage[index].*member;
     }
 
-    mutable Container<T> storage;
+    template<typename R>
+    constexpr R& get_member(R T::* member, size_t index) noexcept
+    {
+        return storage[index].*member;
+    }
+
+    Container<T> storage;
 };
 
 template<typename T, template <typename> class Container>
