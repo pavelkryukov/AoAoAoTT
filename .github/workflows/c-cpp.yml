@@ -7,22 +7,22 @@ on:
     branches: [ master ]
 
 jobs:
-  test:
+  gcc-test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        compiler: [g++, clang++]
     steps:
     - uses: actions/checkout@v2
-    - name: Print compiler version
-      run: ${{ matrix.compiler }} --version
     - name: Install Boost
       run: sudo apt-get install libboost-dev
     - name: Get Boost PFR
       run: git clone https://github.com/boostorg/pfr
     - name: Make test
       working-directory: test
-      run: CXX=${{ matrix.compiler }} CXXFLAGS='-fprofile-arcs -ftest-coverage -g' LDFLAGS='-lgcov --coverage' BOOST_PFR_PATH=../pfr/include make test
+      run: make test
+      env:
+        BOOST_PFR_PATH: ../pfr/include
+        CXX: g++
+        CXXFLAGS: '-fprofile-arcs -ftest-coverage -g'
+        LDFLAGS: '-lgcov --coverage'
     - name: Run test
       working-directory: test
       run: ./test
@@ -40,7 +40,12 @@ jobs:
       run: git clone https://github.com/boostorg/pfr
     - name: Make test
       working-directory: test
-      run: CXXFLAGS='-g -fsanitize=undefined' LDFLAGS='-fsanitize=undefined -lgcc_s --rtlib=compiler-rt' CXX=clang++ BOOST_PFR_PATH=../pfr/include make test
+      run: make test
+      env:
+        BOOST_PFR_PATH: ../pfr/include
+        CXX: clang++
+        CXXFLAGS: '-g -fsanitize=undefined'
+        LDFLAGS: '-fsanitize=undefined -lgcc_s --rtlib=compiler-rt'
     - name: Run test
       working-directory: test
       run: ./test
@@ -55,7 +60,12 @@ jobs:
       run: git clone https://github.com/boostorg/pfr
     - name: Make test
       working-directory: test
-      run: CXXFLAGS='-fsanitize=address' LDFLAGS='-fsanitize=address' CXX=clang++ BOOST_PFR_PATH=../pfr/include make test
+      run: make test
+      env:
+        BOOST_PFR_PATH: ../pfr/include
+        CXX: clang++
+        CXXFLAGS: '-fsanitize=address'
+        LDFLAGS: '-fsanitize=address'
     - name: Run test
       working-directory: test
       run: ./test
