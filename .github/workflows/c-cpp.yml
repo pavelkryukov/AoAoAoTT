@@ -20,7 +20,7 @@ jobs:
       run: git clone https://github.com/boostorg/pfr
     - name: Make test
       working-directory: test
-      run: CXX=${{ matrix.compiler }} make CXXFLAGS='-fprofile-arcs -ftest-coverage -g' LDFLAGS='-lgcov --coverage' BOOST_PFR_PATH=../pfr/include make test
+      run: CXX=${{ matrix.compiler }} CXXFLAGS='-fprofile-arcs -ftest-coverage -g' LDFLAGS='-lgcov --coverage' BOOST_PFR_PATH=../pfr/include make test
     - name: Run test
       working-directory: test
       run: ./test
@@ -38,7 +38,7 @@ jobs:
       run: git clone https://github.com/boostorg/pfr
     - name: Make test
       working-directory: test
-      run: CXXFLAGS='-g -fsanitize=undefined' LDFLAGS='-fsanitize=undefined -lgcc_s --rtlib=compiler-rt' CXX=clang++ BOOST_PFR_PATH=../pfr/include test
+      run: CXXFLAGS='-g -fsanitize=undefined' LDFLAGS='-fsanitize=undefined -lgcc_s --rtlib=compiler-rt' CXX=clang++ BOOST_PFR_PATH=../pfr/include make test
     - name: Run test
       working-directory: test
       run: ./test
