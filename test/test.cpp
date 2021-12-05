@@ -56,11 +56,11 @@ TEST_CONTAINER_CASE("principal test")
     };
     static_assert(sizeof(Structure) != sizeof(int));
 
-    VECTOR_CONTAINER<Structure> storage;
+    ARRAY_CONTAINER<Structure, 20> storage;
     ptrdiff_t distance = bold_cast(storage[10]->*(&Structure::key)) - bold_cast(storage[0]->*(&Structure::key));
 
     // That is the only test dependent on container type
-    if constexpr (std::is_same_v<VECTOR_CONTAINER<Structure>, AoSVector<Structure>>)
+    if constexpr (std::is_same_v<ARRAY_CONTAINER<Structure, 20>, AoSArray<Structure, 20>>)
         CHECK( distance == 10 * sizeof(Structure) );
     else
         CHECK( distance == 10 * sizeof(int) );
