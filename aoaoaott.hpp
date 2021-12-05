@@ -83,16 +83,17 @@ public:
 
 protected:
     constexpr ContainerRef get_base() const noexcept { return base; }
-
     constexpr auto get_index() const noexcept { return index; }
 
-    void inc_index() noexcept { ++index; }
-    void dec_index() noexcept { --index; }
-    void advance_index(ptrdiff_t n) noexcept { index += n; }
+    void increment() noexcept { ++index; }
+    void decrement() noexcept { --index; }
+    void advance(ptrdiff_t n) noexcept { index += n; }
+    bool equal(const BaseFacade& rhs) const noexcept { return index == rhs.index; }
+    ptrdiff_t distance_to(const BaseFacade& rhs) const noexcept { return rhs.index - index; }
 
 private:
     size_t index;
-    ContainerRef base;
+    const ContainerRef base;
 };
 
 template<typename Container>
@@ -446,11 +447,6 @@ public:
         const_iterator(const BaseContainer* base, size_t index) : const_reference(base, index) { }
 
         const auto& dereference() const noexcept { return *this; }
-        bool equal(const const_iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }
-        void increment() noexcept { this->inc_index(); }
-        void decrement() noexcept { this->dec_index(); }
-        void advance(size_t n) noexcept { this->advance_index( n); }
-        ptrdiff_t distance_to(const const_iterator& rhs) const noexcept { return rhs.get_index() - this->get_index(); }
     };
 
     class iterator : reference,
@@ -462,11 +458,6 @@ public:
         iterator(BaseContainer* base, size_t index) : reference(base, index) { }
 
         const auto& dereference() const noexcept { return *this; }
-        bool equal(const iterator& rhs) const noexcept { return this->get_index() == rhs.get_index(); }
-        void increment() noexcept { this->inc_index(); }
-        void decrement() noexcept { this->dec_index(); }
-        void advance(size_t n) noexcept { this->advance_index( n); }
-        ptrdiff_t distance_to(const iterator& rhs) const noexcept { return rhs.get_index() - this->get_index(); }
     };
 
     auto cbegin() const noexcept { return const_iterator{ this, 0}; }
