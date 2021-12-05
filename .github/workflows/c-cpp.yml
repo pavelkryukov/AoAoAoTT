@@ -28,6 +28,21 @@ jobs:
       working-directory: test
       run: bash <(curl -s https://codecov.io/bash) -x "gcov"
 
+  ubsan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Boost
+      run: sudo apt-get install libboost-dev
+    - name: Get Boost PFR
+      run: git clone https://github.com/boostorg/pfr
+    - name: Make test
+      working-directory: test
+      run: CXXFLAGS='-g -fsanitize=undefined' LDFLAGS='-fsanitize=undefined -lgcc_s --rtlib=compiler-rt' CXX=clang++ BOOST_PFR_PATH=../pfr/include test
+    - name: Run test
+      working-directory: test
+      run: ./test
+
   benchmark:
     runs-on: ubuntu-latest
     steps:
