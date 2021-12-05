@@ -25,6 +25,7 @@
 
 #include <boost/pfr.hpp>
 #include <boost/iterator/iterator_facade.hpp>
+#include <boost/iterator/reverse_iterator.hpp>
 
 #include <array>
 #include <cassert>
@@ -467,8 +468,8 @@ public:
     auto begin() noexcept { return iterator{ this, 0}; }
     auto end() noexcept { return iterator{ this, this->size()}; }
 
-    using reverse_iterator = std::reverse_iterator<iterator>;
-    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+    using reverse_iterator = boost::reverse_iterator<iterator>;
+    using const_reverse_iterator = boost::reverse_iterator<const_iterator>;
 
     auto crbegin() const noexcept { return const_reverse_iterator(cend()); }
     auto crend() const noexcept { return const_reverse_iterator(cbegin()); }
