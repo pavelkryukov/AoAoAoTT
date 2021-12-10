@@ -12,10 +12,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install Boost
-      run: sudo apt-get install libboost-dev
+      run: sudo apt-get install libboost-dev libboost-test-dev
     - name: Get Boost PFR
       run: git clone https://github.com/boostorg/pfr
-    - name: Make test
+    - name: Run test
       working-directory: test
       run: make test
       env:
@@ -23,9 +23,6 @@ jobs:
         CXX: g++
         CXXFLAGS: '-fprofile-arcs -ftest-coverage -g'
         LDFLAGS: '-lgcov --coverage'
-    - name: Run test
-      working-directory: test
-      run: ./test
     - name: Codecov
       working-directory: test
       run: bash <(curl -s https://codecov.io/bash) -x "gcov"
@@ -35,10 +32,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install Boost
-      run: sudo apt-get install libboost-dev
+      run: sudo apt-get install libboost-dev libboost-test-dev
     - name: Get Boost PFR
       run: git clone https://github.com/boostorg/pfr
-    - name: Make test
+    - name: Run test
       working-directory: test
       run: make test
       env:
@@ -46,19 +43,16 @@ jobs:
         CXX: clang++
         CXXFLAGS: '-g -fsanitize=undefined'
         LDFLAGS: '-fsanitize=undefined -lgcc_s --rtlib=compiler-rt'
-    - name: Run test
-      working-directory: test
-      run: ./test
 
   asan:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - name: Install Boost
-      run: sudo apt-get install libboost-dev
+      run: sudo apt-get install libboost-dev libboost-test-dev
     - name: Get Boost PFR
       run: git clone https://github.com/boostorg/pfr
-    - name: Make test
+    - name: Run test
       working-directory: test
       run: make test
       env:
@@ -66,10 +60,7 @@ jobs:
         CXX: clang++
         CXXFLAGS: '-fsanitize=address'
         LDFLAGS: '-fsanitize=address'
-    - name: Run test
-      working-directory: test
-      run: ./test
- 
+
   benchmark:
     runs-on: ubuntu-latest
     steps:
