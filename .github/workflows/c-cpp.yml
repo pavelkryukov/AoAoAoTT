@@ -24,34 +24,27 @@ jobs:
   
   coverage:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        type: [AoS, SoA]
     steps:
     - uses: actions/checkout@v2
     - name: Install Boost
       run: sudo apt-get install libboost-dev libboost-test-dev
     - name: Get Boost PFR
       run: git clone https://github.com/boostorg/pfr
-    - name: Test AoS
+    - name: Test
       working-directory: test
-      run: |
-        make test-AoS && ./test-AoS
-        bash <(curl -s https://codecov.io/bash) -x "gcov"
-        git clean -xfd
+      run: make $TEST && ./$TEST
       env:
+        TEST: test-${{ matrix.type }}
         BOOST_PFR_PATH: ../pfr/include
         CXX: g++
         CXXFLAGS: '-fprofile-arcs -ftest-coverage -g'
         LDFLAGS: '-lgcov --coverage'
-    - name: Test SoA
+    - name: Upload coverage
       working-directory: test
-      run: |
-        make test-SoA && ./test-SoA
-        bash <(curl -s https://codecov.io/bash) -x "gcov"
-        git clean -xfd
-      env:
-        BOOST_PFR_PATH: ../pfr/include
-        CXX: g++
-        CXXFLAGS: '-fprofile-arcs -ftest-coverage -g'
-        LDFLAGS: '-lgcov --coverage'
+      run: bash <(curl -s https://codecov.io/bash) -x "gcov"
 
   ubsan:
     runs-on: ubuntu-latest
