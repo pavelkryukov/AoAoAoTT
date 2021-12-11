@@ -86,6 +86,7 @@ jobs:
         CXX: clang++
         CXXFLAGS: '-fsanitize=address'
         LDFLAGS: '-fsanitize=address'
+        ASAN_OPTIONS: 'ASAN_OPTIONS=suppressions=asan.supp'
 
   benchmark:
     runs-on: ubuntu-latest
