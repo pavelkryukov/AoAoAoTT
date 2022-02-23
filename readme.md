@@ -176,6 +176,12 @@ As you may guess, it is a result of STL-incompliance of `std::vector<bool>`.
 
 ----
 
+## Impact
+
+* [C++Russia 2021 talk](https://cppconf.ru/en/talks/interchangeable-aos-and-soa-containers/).
+* LLVM bug reported: [llvm-project/llvm#52617](https://github.com/llvm/llvm-project/issues/52617).
+* Few ideas for C++ standard: [cpp-ru/ideas#482](https://github.com/cpp-ru/ideas/issues/482), [cpp-ru/ideas#484](https://github.com/cpp-ru/ideas/issues/484).
+
 ## Further reading
 
 * _**[Nomad Game Engine: Part 4.3 — AoS vs SoA](https://medium.com/@savas/nomad-game-engine-part-4-3-aos-vs-soa-storage-5bec879aa38c)** by Niko Savas_ — nice demonstration of SoA advantages.
