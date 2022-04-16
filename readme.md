@@ -4,7 +4,7 @@
 
 AoAoAoTT provides AoS and SoA containers interchangeable between each other in terms of interfaces.
 
-More details are discussed in this talk (in Russian): [Interchangeable AoS and SoA containers, _C++ Russia 2021_](https://cppconf.ru/en/talks/interchangeable-aos-and-soa-containers/).
+More details are discussed in this talk (in Russian): [Interchangeable AoS and SoA containers, _C++ Russia 2021_](https://2021.cppconf.ru/en/talks/interchangeable-aos-and-soa-containers).
 
 ## Motivation
 
@@ -178,7 +178,7 @@ As you may guess, it is a result of STL-incompliance of `std::vector<bool>`.
 
 ## Impact
 
-* [C++Russia 2021 talk](https://cppconf.ru/en/talks/interchangeable-aos-and-soa-containers/).
+* [C++Russia 2021 talk](https://2021.cppconf.ru/en/talks/interchangeable-aos-and-soa-containers).
 * LLVM bug reported: [llvm-project/llvm#52617](https://github.com/llvm/llvm-project/issues/52617).
 * Few ideas for C++ standard: [cpp-ru/ideas#482](https://github.com/cpp-ru/ideas/issues/482), [cpp-ru/ideas#484](https://github.com/cpp-ru/ideas/issues/484).
 
